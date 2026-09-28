@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.SongLikeMapper">
+
+    <select id="findSongIds" resultType="long">
+        SELECT song_id FROM song_like
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <insert id="add">
+        INSERT IGNORE INTO song_like (user_id, song_id, create_time)
+        VALUES (#{userId}, #{songId}, NOW())
+    </insert>
+
+    <delete id="remove">
+        DELETE FROM song_like WHERE user_id = #{userId} AND song_id = #{songId}
+    </delete>
+
+    <select id="exists" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM song_like WHERE user_id = #{userId} AND song_id = #{songId}
+    </select>
+</mapper>

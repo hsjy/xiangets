@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.SingerMapper">
+
+    <sql id="cols">
+        id, name, gender, avatar, style, location, birth, intro, song_count, create_time
+    </sql>
+
+    <select id="findById" resultType="Singer">
+        SELECT <include refid="cols"/> FROM singer WHERE id = #{id}
+    </select>
+
+    <select id="search" resultType="Singer">
+        SELECT <include refid="cols"/> FROM singer
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (name LIKE CONCAT('%', #{keyword}, '%')
+                     OR style LIKE CONCAT('%', #{keyword}, '%')
+                     OR location LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY song_count DESC, id ASC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO singer (name, gender, avatar, style, location, birth, intro, song_count, create_time)
+        VALUES (#{name}, #{gender}, #{avatar}, #{style}, #{location}, #{birth}, #{intro},
+                #{songCount}, NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE singer
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="style != null">style = #{style},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="birth != null">birth = #{birth},</if>
+            <if test="intro != null">intro = #{intro},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM singer WHERE id = #{id}
+    </delete>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM singer
+    </select>
+</mapper>

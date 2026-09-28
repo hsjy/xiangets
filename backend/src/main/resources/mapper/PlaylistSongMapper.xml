@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.PlaylistSongMapper">
+
+    <select id="findSongIds" resultType="long">
+        SELECT song_id FROM playlist_song
+        WHERE playlist_id = #{playlistId}
+        ORDER BY sort_no ASC, id ASC
+    </select>
+
+    <!-- INSERT IGNORE：重复加入同一首歌时不报错，静默跳过（与前端 mock 的去重行为一致） -->
+    <insert id="add">
+        INSERT IGNORE INTO playlist_song (playlist_id, song_id, sort_no, create_time)
+        VALUES (#{playlistId}, #{songId}, #{sortNo}, NOW())
+    </insert>
+
+    <delete id="remove">
+        DELETE FROM playlist_song WHERE playlist_id = #{playlistId} AND song_id = #{songId}
+    </delete>
+
+    <delete id="deleteByPlaylist">
+        DELETE FROM playlist_song WHERE playlist_id = #{playlistId}
+    </delete>
+
+    <!-- 整表重排：调用方在同一事务内先 deleteByPlaylist 再 reorder -->
+    <insert id="reorder">
+        INSERT INTO playlist_song (playlist_id, song_id, sort_no, create_time)
+        VALUES
+        <foreach collection="songIds" item="sid" separator=",">
+            (#{playlistId}, #{sid}, #{index}, NOW())
+        </foreach>
+    </insert>
+
+    <select id="countByPlaylist" resultType="int">
+        SELECT COUNT(*) FROM playlist_song WHERE playlist_id = #{playlistId}
+    </select>
+
+    <select id="maxSortNo" resultType="int">
+        SELECT COALESCE(MAX(sort_no), 0) FROM playlist_song WHERE playlist_id = #{playlistId}
+    </select>
+</mapper>

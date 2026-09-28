@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.CommentMapper">
+
+    <select id="findBySong" resultType="Comment">
+        SELECT c.id, c.song_id, c.user_id, c.content, c.create_time,
+               u.name AS username, u.avatar AS avatar
+        FROM comment c
+        LEFT JOIN `user` u ON u.id = c.user_id
+        WHERE c.song_id = #{songId}
+        ORDER BY c.create_time DESC, c.id DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comment (song_id, user_id, content, create_time)
+        VALUES (#{songId}, #{userId}, #{content}, NOW())
+    </insert>
+
+    <delete id="deleteByIdAndUser">
+        DELETE FROM comment WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+</mapper>

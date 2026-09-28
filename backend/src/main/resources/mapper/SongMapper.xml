@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.SongMapper">
+
+    <!-- 列表查询统一带上歌手名，前端表格无需二次请求 -->
+    <sql id="listJoin">
+        SELECT s.id, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
+               s.play_count, s.create_time, si.name AS singer_name
+        FROM song s
+        LEFT JOIN singer si ON si.id = s.singer_id
+    </sql>
+
+    <select id="search" resultType="Song">
+        <include refid="listJoin"/>
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (s.name LIKE CONCAT('%', #{keyword}, '%') OR si.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="style != null and style != ''">
+                AND s.style = #{style}
+            </if>
+            <if test="singerId != null">
+                AND s.singer_id = #{singerId}
+            </if>
+        </where>
+        <choose>
+            <when test="sort == 'time'">
+                ORDER BY s.create_time DESC, s.id DESC
+            </when>
+            <when test="sort == 'name'">
+                ORDER BY s.name ASC
+            </when>
+            <otherwise>
+                ORDER BY s.play_count DESC, s.id ASC
+            </otherwise>
+        </choose>
+    </select>
+
+    <select id="findById" resultType="Song">
+        SELECT s.id, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
+               s.play_count, s.create_time, si.name AS singer_name
+        FROM song s
+        LEFT JOIN singer si ON si.id = s.singer_id
+        WHERE s.id = #{id}
+    </select>
+
+    <select id="findHot" resultType="Song">
+        <include refid="listJoin"/>
+        ORDER BY s.play_count DESC, s.id ASC
+        LIMIT #{limit}
+    </select>
+
+    <!-- FIELD() 让结果按传入 ID 数组的顺序返回，保证歌单内的自定义排序不丢 -->
+    <select id="findByIdsInOrder" resultType="Song">
+        SELECT s.id, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
+               s.play_count, s.create_time, si.name AS singer_name
+        FROM song s
+        LEFT JOIN singer si ON si.id = s.singer_id
+        WHERE s.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY FIELD(s.id,
+        <foreach collection="ids" item="id" separator=",">#{id}</foreach>)
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO song (name, singer_id, cover, url, duration, style, play_count, create_time)
+        VALUES (#{name}, #{singerId}, #{cover}, #{url}, #{duration}, #{style}, #{playCount}, NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE song
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="singerId != null">singer_id = #{singerId},</if>
+            <if test="cover != null">cover = #{cover},</if>
+            <if test="url != null">url = #{url},</if>
+            <if test="duration != null">duration = #{duration},</if>
+            <if test="style != null">style = #{style},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM song WHERE id = #{id}
+    </delete>
+
+    <update id="increasePlayCount">
+        UPDATE song SET play_count = play_count + 1 WHERE id = #{id}
+    </update>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM song
+    </select>
+
+    <select id="sumPlayCount" resultType="long">
+        SELECT COALESCE(SUM(play_count), 0) FROM song
+    </select>
+</mapper>

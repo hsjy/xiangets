@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.PlaylistMapper">
+
+    <sql id="cols">
+        p.id, p.name, p.intro, p.cover, p.style, p.creator_id, p.is_public, p.create_time
+    </sql>
+
+    <!-- songCount 用子查询统计，避免 GROUP BY 污染其他列表查询 -->
+    <sql id="viewCols">
+        <include refid="cols"/>,
+        COALESCE(u.name, '官方') AS creator_name,
+        COALESCE(u.avatar, '') AS creator_avatar,
+        (SELECT COUNT(*) FROM playlist_song ps WHERE ps.playlist_id = p.id) AS song_count
+    </sql>
+
+    <select id="search" resultType="Playlist">
+        SELECT <include refid="viewCols"/>
+        FROM playlist p
+        LEFT JOIN `user` u ON u.id = p.creator_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (p.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR p.intro LIKE CONCAT('%', #{keyword}, '%')
+                     OR p.style LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="style != null and style != ''">
+                AND p.style = #{style}
+            </if>
+        </where>
+        ORDER BY p.create_time DESC, p.id DESC
+    </select>
+
+    <select id="findByCreator" resultType="Playlist">
+        SELECT <include refid="viewCols"/>
+        FROM playlist p
+        LEFT JOIN `user` u ON u.id = p.creator_id
+        WHERE p.creator_id = #{creatorId}
+        ORDER BY p.create_time DESC, p.id DESC
+    </select>
+
+    <select id="findFavorited" resultType="Playlist">
+        SELECT <include refid="viewCols"/>
+        FROM playlist p
+        JOIN user_favorite f ON f.playlist_id = p.id AND f.user_id = #{userId}
+        LEFT JOIN `user` u ON u.id = p.creator_id
+        ORDER BY f.create_time DESC
+    </select>
+
+    <select id="findById" resultType="Playlist">
+        SELECT <include refid="viewCols"/>
+        FROM playlist p
+        LEFT JOIN `user` u ON u.id = p.creator_id
+        WHERE p.id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO playlist (name, intro, cover, style, creator_id, is_public, create_time)
+        VALUES (#{name}, #{intro}, #{cover}, #{style}, #{creatorId}, #{isPublic}, NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE playlist
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="intro != null">intro = #{intro},</if>
+            <if test="cover != null">cover = #{cover},</if>
+            <if test="style != null">style = #{style},</if>
+            <if test="isPublic != null">is_public = #{isPublic},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM playlist WHERE id = #{id}
+    </delete>
+
+    <insert id="addFavorite">
+        INSERT IGNORE INTO user_favorite (user_id, playlist_id, create_time)
+        VALUES (#{userId}, #{playlistId}, NOW())
+    </insert>
+
+    <delete id="removeFavorite">
+        DELETE FROM user_favorite WHERE user_id = #{userId} AND playlist_id = #{playlistId}
+    </delete>
+
+    <select id="isFavorited" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM user_favorite WHERE user_id = #{userId} AND playlist_id = #{playlistId}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM playlist
+    </select>
+</mapper>
