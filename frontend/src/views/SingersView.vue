@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { singerApi } from '../api'
 import Icon from '../components/Icon.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 
 const loading = ref(true)
 const singers = ref([])
@@ -38,7 +39,7 @@ onMounted(load)
     <div v-if="loading" class="spinner" />
     <div v-else-if="singers.length" class="grid-cards">
       <router-link v-for="s in singers" :key="s.id" :to="`/singer/${s.id}`" class="singer-card">
-        <img :src="`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(s.name)}&backgroundColor=b6e3f4,c0aede,d1d4f9`" :alt="s.name" loading="lazy" />
+        <UserAvatar :name="s.name" :size="72" circle />
         <div class="sc-body">
           <div class="sc-name">{{ s.name }}</div>
           <div class="sc-meta">{{ GENDER[s.gender] || '歌手' }} · {{ s.style }}</div>
@@ -64,13 +65,6 @@ onMounted(load)
   transition: all 0.18s;
 }
 .singer-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-.singer-card img {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--bg-soft);
-  flex-shrink: 0;
-}
 .sc-body { min-width: 0; }
 .sc-name { font-size: 15px; font-weight: 700; }
 .sc-meta { font-size: 12px; color: var(--primary-2); margin: 3px 0 6px; }

@@ -5,6 +5,7 @@ import { formatNumber } from '../utils/format'
 import PlaylistCard from '../components/PlaylistCard.vue'
 import SongTable from '../components/SongTable.vue'
 import Icon from '../components/Icon.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 
 const loading = ref(true)
 const stats = ref(null)
@@ -95,7 +96,7 @@ onMounted(load)
       </div>
       <div class="singer-row">
         <router-link v-for="s in singers" :key="s.id" :to="`/singer/${s.id}`" class="singer-chip">
-          <img :src="`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(s.name)}&backgroundColor=b6e3f4,c0aede,d1d4f9`" :alt="s.name" loading="lazy" />
+          <UserAvatar :name="s.name" :size="44" circle />
           <div>
             <div class="sc-name">{{ s.name }}</div>
             <div class="sc-style">{{ s.style }}</div>
@@ -113,9 +114,9 @@ onMounted(load)
   justify-content: space-between;
   gap: 24px;
   background:
-    radial-gradient(600px 300px at 85% 20%, rgba(184, 134, 11, 0.1), transparent),
-    linear-gradient(135deg, rgba(166, 58, 43, 0.08), rgba(58, 54, 48, 0.85)),
-    #3a3630;
+    radial-gradient(600px 300px at 85% 20%, rgba(184, 134, 11, 0.16), transparent),
+    linear-gradient(135deg, rgba(64, 99, 77, 0.5), rgba(34, 50, 40, 0.92)),
+    #2e4034;
   color: #efe8d6;
   border: 1px solid var(--border-strong);
   border-radius: 12px;
@@ -161,7 +162,6 @@ onMounted(load)
   transition: all 0.18s;
 }
 .singer-chip:hover { border-color: var(--primary); transform: translateY(-2px); }
-.singer-chip img { width: 44px; height: 44px; border-radius: 50%; background: var(--bg-soft); }
 .sc-name { font-size: 14px; font-weight: 600; }
 .sc-style { font-size: 12px; color: var(--text-3); }
 

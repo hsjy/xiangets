@@ -235,14 +235,14 @@ watch(() => player.currentId, async (id) => {
   cursor: pointer;
   transition: all 0.15s;
 }
-.ctl:hover:not(:disabled) { color: var(--text); background: rgba(166, 58, 43, 0.09); }
+.ctl:hover:not(:disabled) { color: var(--primary); background: rgba(64, 99, 77, 0.1); }
 .ctl:disabled { opacity: 0.35; cursor: not-allowed; }
 .ctl.play {
   width: 44px;
   height: 44px;
   background: var(--grad);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(166, 58, 43, 0.35);
+  box-shadow: 0 4px 14px rgba(64, 99, 77, 0.32);
 }
 .ctl.play:hover:not(:disabled) { filter: brightness(1.1); }
 .ctl.like.active { color: var(--accent); }

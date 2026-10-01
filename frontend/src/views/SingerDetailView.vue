@@ -6,6 +6,7 @@ import { usePlayerStore } from '../stores/player'
 import { openAddToPlaylist } from '../stores/ui'
 import SongTable from '../components/SongTable.vue'
 import Icon from '../components/Icon.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 
 const route = useRoute()
 const player = usePlayerStore()
@@ -39,7 +40,7 @@ function playAll() {
     <div v-if="loading" class="spinner" />
     <template v-else-if="singer">
       <section class="hero">
-        <img class="hero-avatar" :src="`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(singer.name)}&backgroundColor=b6e3f4,c0aede,d1d4f9&size=160`" :alt="singer.name" />
+        <UserAvatar :name="singer.name" :size="130" circle />
         <div class="hero-info">
           <h1>{{ singer.name }}</h1>
           <p class="tags">
@@ -79,14 +80,6 @@ function playAll() {
   border-radius: 18px;
   padding: 26px;
   margin-bottom: 26px;
-}
-.hero-avatar {
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: var(--bg-soft);
-  border: 3px solid rgba(166, 58, 43, 0.35);
-  flex-shrink: 0;
 }
 .hero-info h1 { margin: 4px 0 10px; font-size: 24px; }
 .tags { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }

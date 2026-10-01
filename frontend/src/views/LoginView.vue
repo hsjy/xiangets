@@ -155,7 +155,7 @@ function fillDemo() {
   animation: float 14s ease-in-out infinite;
 }
 .o1 { width: 340px; height: 340px; background: rgba(58, 54, 48, 0.16); top: -80px; left: 10%; }
-.o2 { width: 280px; height: 280px; background: rgba(166, 58, 43, 0.1); bottom: -60px; right: 12%; animation-delay: -5s; }
+.o2 { width: 280px; height: 280px; background: rgba(64, 99, 77, 0.14); bottom: -60px; right: 12%; animation-delay: -5s; }
 .o3 { width: 200px; height: 200px; background: rgba(47, 79, 79, 0.14); top: 52%; left: 56%; animation-delay: -9s; }
 @keyframes float { 50% { transform: translateY(-24px); } }
 .mountains {

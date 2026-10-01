@@ -110,7 +110,7 @@ async function onClear() {
   cursor: pointer;
   transition: background 0.15s;
 }
-.q-item:hover { background: rgba(166, 58, 43, 0.06); }
+.q-item:hover { background: rgba(64, 99, 77, 0.07); }
 .q-item.current { background: var(--grad-soft); }
 .q-item.current .q-name { color: var(--primary-2); }
 .q-idx { width: 22px; text-align: center; color: var(--text-3); font-size: 12px; flex-shrink: 0; }

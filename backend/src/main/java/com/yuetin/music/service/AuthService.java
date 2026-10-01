@@ -44,7 +44,7 @@ public class AuthService {
         user.setUsername(username);
         user.setPassword(PasswordUtil.encode(password));
         user.setName(name == null || name.isEmpty() ? username : name);
-        user.setAvatar("https://api.dicebear.com/7.x/adventurer/svg?seed=" + username);
+        // 头像留空：前端以「印章头像」（用户名首字入印）作为默认形象
         user.setEmail(str(body.get("email")));
         user.setPhone(str(body.get("phone")));
         user.setSex(body.get("sex") == null ? 0 : Integer.valueOf(String.valueOf(body.get("sex"))));

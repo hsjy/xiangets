@@ -2,6 +2,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import Icon from './Icon.vue'
+import UserAvatar from './UserAvatar.vue'
 import { useUserStore } from '../stores/user'
 import { toast } from '../utils/toast'
 
@@ -48,7 +49,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
     <div class="right" ref="menuRef">
       <template v-if="userStore.isLoggedIn">
         <button class="user-chip" @click.stop="menuOpen = !menuOpen" data-test="user-menu">
-          <img :src="userStore.user.avatar" class="avatar" alt="" />
+          <UserAvatar :name="userStore.user.name" :size="28" circle />
           <span class="uname">{{ userStore.user.name }}</span>
           <Icon name="chevron-down" :size="14" />
         </button>
@@ -115,7 +116,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 }
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(166, 58, 43, 0.14);
+  box-shadow: 0 0 0 3px rgba(64, 99, 77, 0.14);
 }
 
 .right { position: relative; }
@@ -132,7 +133,6 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   font-size: 13.5px;
 }
 .user-chip:hover { border-color: var(--primary); }
-.avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-soft); }
 .uname { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .menu {
@@ -169,6 +169,6 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   cursor: pointer;
   text-align: left;
 }
-.menu-item:hover { background: rgba(166, 58, 43, 0.07); color: var(--text); }
+.menu-item:hover { background: rgba(64, 99, 77, 0.08); color: var(--text); }
 .menu-item.danger:hover { color: var(--danger); background: rgba(244, 63, 94, 0.08); }
 </style>

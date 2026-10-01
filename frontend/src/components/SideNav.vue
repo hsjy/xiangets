@@ -73,7 +73,7 @@ const navs = [
   width: 38px;
   height: 38px;
   border-radius: 6px;
-  background: var(--primary);
+  background: var(--seal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -82,7 +82,7 @@ const navs = [
   font-size: 24px;
   line-height: 1;
   padding-bottom: 2px;
-  box-shadow: 0 4px 12px rgba(166, 58, 43, 0.35);
+  box-shadow: 0 4px 12px rgba(165, 64, 45, 0.35);
 }
 .brand-name {
   font-family: 'Ma Shan Zheng', 'LXGW WenKai', 'Songti SC', serif;
@@ -102,7 +102,7 @@ const navs = [
   font-size: 14.5px;
   transition: all 0.15s;
 }
-.nav-item:hover { color: var(--text); background: rgba(166, 58, 43, 0.07); }
+.nav-item:hover { color: var(--text); background: rgba(64, 99, 77, 0.08); }
 .nav-item.active {
   color: var(--text);
   background: var(--grad-soft);

@@ -4,6 +4,7 @@ import { useUserStore } from '../stores/user'
 import { toast } from '../utils/toast'
 import { formatDate } from '../utils/format'
 import Icon from '../components/Icon.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 
 const userStore = useUserStore()
 const form = ref({
@@ -38,7 +39,7 @@ async function save() {
 
     <div class="card profile-card">
       <div class="top">
-        <img :src="userStore.user?.avatar" class="avatar" alt="" />
+        <UserAvatar :name="userStore.user?.name" :size="64" />
         <div>
           <div class="uname">{{ userStore.user?.name }}</div>
           <div class="u-sub">
@@ -90,7 +91,7 @@ async function save() {
 <style scoped>
 .profile-card { max-width: 640px; padding: 26px; }
 .top { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-.avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--bg-soft); border: 2px solid rgba(166, 58, 43, 0.4); }
+.avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--bg-soft); border: 2px solid rgba(64, 99, 77, 0.45); }
 .uname { font-size: 18px; font-weight: 700; }
 .u-sub { font-size: 12.5px; color: var(--text-3); margin-top: 4px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }

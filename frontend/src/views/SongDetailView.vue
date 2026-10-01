@@ -9,6 +9,7 @@ import { formatDuration, formatDate, formatPlays } from '../utils/format'
 import { toast } from '../utils/toast'
 import SameSingerSongs from '../components/SameSingerSongs.vue'
 import Icon from '../components/Icon.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 
 const route = useRoute()
 const player = usePlayerStore()
@@ -145,7 +146,7 @@ async function removeComment(c) {
         </h2>
 
         <div class="comment-editor" v-if="userStore.isLoggedIn">
-          <img :src="userStore.user.avatar" class="c-avatar" alt="" />
+          <UserAvatar :name="userStore.user.name" :size="38" circle />
           <div class="c-input-wrap">
             <textarea v-model="commentText" class="textarea" rows="2" maxlength="200"
               placeholder="说说你的听后感…" data-test="comment-input" />
@@ -163,7 +164,7 @@ async function removeComment(c) {
 
         <div class="comment-list">
           <div v-for="c in comments" :key="c.id" class="comment">
-            <img :src="c.avatar" class="c-avatar" alt="" />
+            <UserAvatar :name="c.username" :size="38" circle />
             <div class="c-body">
               <div class="c-head">
                 <span class="c-name">{{ c.username }}</span>
@@ -218,7 +219,6 @@ async function removeComment(c) {
 .block { margin-top: 28px; }
 
 .comment-editor { display: flex; gap: 12px; margin-bottom: 22px; }
-.c-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-soft); flex-shrink: 0; }
 .c-input-wrap { flex: 1; }
 .c-input-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
 .counter { font-size: 12px; color: var(--text-3); }

@@ -553,7 +553,7 @@ async function register(body) {
   const user = {
     id, username, password,
     name: String(b.name || '').trim().slice(0, 20) || username,
-    avatar: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(username)}&backgroundColor=b6e3f4,c0aede,d1d4f9`,
+    avatar: '',
     sex: 0, phone: '', email: '', birth: '', intro: '', role: 'user', createTime: Date.now()
   }
   const r = tx((d) => {
