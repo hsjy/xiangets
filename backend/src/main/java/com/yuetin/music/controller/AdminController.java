@@ -101,7 +101,7 @@ public class AdminController {
         s.setStyle(str(body.get("style")));
         s.setDuration(new java.math.BigDecimal(String.valueOf(
                 body.get("duration") == null ? 0 : body.get("duration"))));
-        s.setPlayCount(0);
+        s.setPlayCount(0L);
         songMapper.insert(s);
         return Result.ok(s);
     }

@@ -4,11 +4,11 @@
 -- 密码为明文，仅用于本地初始化；后端登录时统一做 SHA-256 加盐比对
 -- ============================================================
 
-INSERT INTO `user` (`id`,`username`,`password`,`name`,`avatar`,`email`,`phone`,`sex`,`birth`,`intro`,`role`,`create_time`) VALUES
+INSERT IGNORE INTO `user` (`id`,`username`,`password`,`name`,`avatar`,`email`,`phone`,`sex`,`birth`,`intro`,`role`,`create_time`) VALUES
   (1,'demo','123456','演示用户','https://api.dicebear.com/7.x/adventurer/svg?seed=demo&backgroundColor=b6e3f4,c0aede,d1d4f9','demo@yuetin.example','13800000000',0,'2000-01-01','这个人很懒，但很爱听歌。','user','2024-01-10 02:00:00'),
   (2,'admin','admin123','管理员','https://api.dicebear.com/7.x/adventurer/svg?seed=admin&backgroundColor=b6e3f4,c0aede,d1d4f9','admin@yuetin.example','',1,'','站点管理员。','admin','2024-01-10 02:00:00');
 
-INSERT INTO `singer` (`id`,`name`,`gender`,`avatar`,`style`,`location`,`birth`,`intro`,`song_count`,`create_time`) VALUES
+INSERT IGNORE INTO `singer` (`id`,`name`,`gender`,`avatar`,`style`,`location`,`birth`,`intro`,`song_count`,`create_time`) VALUES
   (1,'林晚晴',1,NULL,'流行','浙江 杭州','1996-04-18','声音干净温暖的创作型歌手，擅长把日常心事写成旋律。代表作《晚风信》《时光邮局》。',2,'2024-01-01 00:00:00'),
   (2,'星尘乐团',2,NULL,'摇滚','北京','2015-09-01','五人制独立摇滚乐团，以恢弘编曲与少年感歌词著称，现场感染力极强。',2,'2024-01-01 00:00:00'),
   (3,'陈叙白',0,NULL,'民谣','四川 成都','1990-11-06','行走过的城市都写进了歌里。一把木吉他，唱尽小镇与远方。',2,'2024-01-01 00:00:00'),
@@ -18,7 +18,7 @@ INSERT INTO `singer` (`id`,`name`,`gender`,`avatar`,`style`,`location`,`birth`,`
   (7,'夏未至',1,NULL,'R&B','湖南 长沙','1997-05-30','律动至上的 R&B 新声代，唱腔慵懒，句句都是深夜心事。',2,'2024-01-01 00:00:00'),
   (8,'岚烟',1,NULL,'古风','江苏 苏州','1995-08-09','江南女子，歌声如画。一笔一墨皆是山河岁月。',2,'2024-01-01 00:00:00');
 
-INSERT INTO `song` (`id`,`name`,`singer_id`,`cover`,`url`,`duration`,`style`,`play_count`,`create_time`) VALUES
+INSERT IGNORE INTO `song` (`id`,`name`,`singer_id`,`cover`,`url`,`duration`,`style`,`play_count`,`create_time`) VALUES
   (1,'晚风信',1,NULL,'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',372.7,'流行',284567,'2024-01-13 02:00:00'),
   (2,'时光邮局',1,NULL,'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',425.9,'流行',156234,'2024-01-16 02:00:00'),
   (3,'银河漫游',2,NULL,'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',344,'摇滚',512081,'2024-01-19 02:00:00'),
@@ -36,7 +36,7 @@ INSERT INTO `song` (`id`,`name`,`singer_id`,`cover`,`url`,`duration`,`style`,`pl
   (15,'山河图',8,NULL,'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-15.mp3',438,'古风',123456,'2024-02-24 02:00:00'),
   (16,'画中人',8,NULL,'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3',483.4,'古风',210987,'2024-02-27 02:00:00');
 
-INSERT INTO `playlist` (`id`,`name`,`intro`,`cover`,`style`,`creator_id`,`is_public`,`create_time`) VALUES
+INSERT IGNORE INTO `playlist` (`id`,`name`,`intro`,`cover`,`style`,`creator_id`,`is_public`,`create_time`) VALUES
   (1,'深夜学习时段','适合专注的安静旋律，让思绪随音乐沉淀。','https://picsum.photos/seed/yuetin-playlist-1/400','学习',NULL,1,'2024-01-10 02:00:00'),
   (2,'通勤路上的轻快旋律','早高峰也要有好心情，节奏刚刚好的歌单。','https://picsum.photos/seed/yuetin-playlist-2/400','通勤',NULL,1,'2024-01-20 02:00:00'),
   (3,'雨夜古风精选','窗外落雨，室内茶香，一曲古风入梦来。','https://picsum.photos/seed/yuetin-playlist-3/400','古风',NULL,1,'2024-02-04 02:00:00'),
@@ -45,7 +45,7 @@ INSERT INTO `playlist` (`id`,`name`,`intro`,`cover`,`style`,`creator_id`,`is_pub
   (6,'睡前轻音','温柔收官这一天，愿你好梦。','https://picsum.photos/seed/yuetin-playlist-6/400','助眠',NULL,1,'2024-03-20 02:00:00'),
   (7,'夜跑节奏站','','https://picsum.photos/seed/yuetin-upl-7-1/400','我的收藏',1,1,'2026-09-27 03:09:07');
 
-INSERT INTO `playlist_song` (`playlist_id`,`song_id`,`sort_no`) VALUES
+INSERT IGNORE INTO `playlist_song` (`playlist_id`,`song_id`,`sort_no`) VALUES
   (1,1,5),
   (1,4,5),
   (1,6,5),
@@ -77,10 +77,10 @@ INSERT INTO `playlist_song` (`playlist_id`,`song_id`,`sort_no`) VALUES
   (6,16,4),
   (7,8,1);
 
-INSERT INTO `comment` (`song_id`,`user_id`,`content`,`create_time`) VALUES
+INSERT IGNORE INTO `comment` (`song_id`,`user_id`,`content`,`create_time`) VALUES
   (1,1,'前奏一响就像收到了一封夏天的信！','2024-01-22 02:00:00'),
   (3,2,'副歌的吉他太顶了，单曲循环中。','2024-01-30 02:00:00');
 
-INSERT INTO `user_favorite` (`user_id`,`playlist_id`) VALUES
+INSERT IGNORE INTO `user_favorite` (`user_id`,`playlist_id`) VALUES
   (1,1),
   (1,3);
