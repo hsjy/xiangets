@@ -26,10 +26,11 @@ const isBare = computed(() => route.meta.bare === true)
     </div>
     <PlayerBar />
     <QueueDrawer />
-    <ToastHost />
-    <ConfirmHost />
     <AddToPlaylistModal />
   </div>
+  <!-- Toast / 确认框必须在所有布局分支之外：登录/注册页（bare）也要能弹提示 -->
+  <ToastHost />
+  <ConfirmHost />
 </template>
 
 <style scoped>

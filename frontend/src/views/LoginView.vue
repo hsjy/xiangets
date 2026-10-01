@@ -2,8 +2,12 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { authApi } from '../api'
 import { toast } from '../utils/toast'
 import Icon from '../components/Icon.vue'
+
+// 与后端 AuthService 相同的用户名规则
+const USERNAME_RE = /^[A-Za-z0-9_]{3,20}$/
 
 const route = useRoute()
 const router = useRouter()
@@ -36,6 +40,9 @@ async function onSubmit() {
     return
   }
   if (!isLogin.value) {
+    if (!USERNAME_RE.test(username.trim())) {
+      return toast.error('用户名需为 3-20 位字母、数字或下划线')
+    }
     if (password.length < 6) return toast.error('密码长度至少 6 位')
     if (password !== password2) return toast.error('两次输入的密码不一致')
   }
@@ -44,11 +51,14 @@ async function onSubmit() {
     if (isLogin.value) {
       await userStore.login(username.trim(), password)
       toast.success('登录成功，欢迎回来！')
+      goBack()
     } else {
-      await userStore.register({ username: username.trim(), password, name: name.trim() })
-      toast.success('注册成功，已自动登录！')
+      // 注册成功后回到登录页：预填用户名，清空密码，由用户主动登录
+      await authApi.register({ username: username.trim(), password, name: name.trim() })
+      toast.success('注册成功，请使用新账号登录')
+      mode.value = 'login'
+      form.value = { username: username.trim(), password: '', password2: '', name: '' }
     }
-    goBack()
   } catch (e) {
     toast.error(e.message)
   } finally {
@@ -87,7 +97,7 @@ function fillDemo() {
       <form @submit.prevent="onSubmit" data-test="auth-form">
         <div class="form-item">
           <label class="form-label">用户名</label>
-          <input v-model.trim="form.username" class="input" placeholder="3-16 位字母、数字或下划线"
+          <input v-model.trim="form.username" class="input" placeholder="3-20 位字母、数字或下划线"
             autocomplete="username" data-test="username" />
         </div>
         <div class="form-item">
