@@ -58,7 +58,7 @@ async function onClear() {
 .drawer-mask {
   position: fixed;
   inset: 0;
-  background: rgba(5, 7, 12, 0.4);
+  background: rgba(46, 38, 24, 0.38);
   z-index: 200;
 }
 .drawer {
@@ -110,7 +110,7 @@ async function onClear() {
   cursor: pointer;
   transition: background 0.15s;
 }
-.q-item:hover { background: rgba(255, 255, 255, 0.04); }
+.q-item:hover { background: rgba(166, 58, 43, 0.06); }
 .q-item.current { background: var(--grad-soft); }
 .q-item.current .q-name { color: var(--primary-2); }
 .q-idx { width: 22px; text-align: center; color: var(--text-3); font-size: 12px; flex-shrink: 0; }

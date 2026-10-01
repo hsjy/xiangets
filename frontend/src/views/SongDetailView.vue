@@ -196,7 +196,7 @@ async function removeComment(c) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 10px 34px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 10px 30px rgba(166, 58, 43, 0.3);
 }
 .spinning { animation: spin 6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -214,7 +214,7 @@ async function removeComment(c) {
   font-weight: 600;
 }
 .acts { display: flex; gap: 10px; flex-wrap: wrap; }
-.acts .liked { color: var(--accent); border-color: rgba(236, 72, 153, 0.4); }
+.acts .liked { color: var(--accent); border-color: rgba(166, 58, 43, 0.45); }
 .block { margin-top: 28px; }
 
 .comment-editor { display: flex; gap: 12px; margin-bottom: 22px; }

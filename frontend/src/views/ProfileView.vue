@@ -90,7 +90,7 @@ async function save() {
 <style scoped>
 .profile-card { max-width: 640px; padding: 26px; }
 .top { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-.avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--bg-soft); border: 2px solid rgba(139, 92, 246, 0.4); }
+.avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--bg-soft); border: 2px solid rgba(166, 58, 43, 0.4); }
 .uname { font-size: 18px; font-weight: 700; }
 .u-sub { font-size: 12.5px; color: var(--text-3); margin-top: 4px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }

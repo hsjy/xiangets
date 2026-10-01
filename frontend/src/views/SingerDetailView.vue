@@ -85,7 +85,7 @@ function playAll() {
   height: 130px;
   border-radius: 50%;
   background: var(--bg-soft);
-  border: 3px solid rgba(139, 92, 246, 0.4);
+  border: 3px solid rgba(166, 58, 43, 0.35);
   flex-shrink: 0;
 }
 .hero-info h1 { margin: 4px 0 10px; font-size: 24px; }

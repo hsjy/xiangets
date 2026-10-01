@@ -62,7 +62,7 @@ defineProps({
   align-items: center;
   justify-content: center;
   margin-left: auto;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 14px rgba(46, 38, 24, 0.45);
 }
 .count-chip {
   position: absolute;

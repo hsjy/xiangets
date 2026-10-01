@@ -107,7 +107,7 @@ tbody tr.playing .song-name { color: var(--primary-2); }
   transition: all 0.15s;
 }
 tr:hover .act { opacity: 1; }
-.act:hover { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+.act:hover { color: var(--text); background: rgba(166, 58, 43, 0.1); }
 .act.play { color: var(--primary-2); }
 .act.play:hover { background: var(--grad); color: #fff; }
 .act.danger:hover { color: var(--danger); background: rgba(244, 63, 94, 0.12); }

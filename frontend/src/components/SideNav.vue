@@ -17,8 +17,8 @@ const navs = [
 <template>
   <aside class="sidenav">
     <router-link to="/discover" class="brand">
-      <span class="brand-logo"><Icon name="disc" :size="22" /></span>
-      <span class="brand-name">悦听</span>
+      <span class="brand-logo">弦</span>
+      <span class="brand-name">弦歌</span>
     </router-link>
 
     <nav class="nav-list">
@@ -43,7 +43,7 @@ const navs = [
 
     <div class="foot">
       <p>Vue3 · SpringBoot · MySQL</p>
-      <p>前后端分离音乐网站</p>
+      <p>诗乐雅集 · 古诗配乐欣赏</p>
     </div>
   </aside>
 </template>
@@ -72,22 +72,24 @@ const navs = [
 .brand-logo {
   width: 38px;
   height: 38px;
-  border-radius: 11px;
-  background: var(--grad);
+  border-radius: 6px;
+  background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+  color: #fbf6ea;
+  font-family: 'Ma Shan Zheng', 'LXGW WenKai', 'Songti SC', serif;
+  font-size: 24px;
+  line-height: 1;
+  padding-bottom: 2px;
+  box-shadow: 0 4px 12px rgba(166, 58, 43, 0.35);
 }
 .brand-name {
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  background: linear-gradient(135deg, #a78bfa, #f472b6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-family: 'Ma Shan Zheng', 'LXGW WenKai', 'Songti SC', serif;
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  color: var(--text);
 }
 .nav-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .nav-item {
@@ -100,7 +102,7 @@ const navs = [
   font-size: 14.5px;
   transition: all 0.15s;
 }
-.nav-item:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+.nav-item:hover { color: var(--text); background: rgba(166, 58, 43, 0.07); }
 .nav-item.active {
   color: var(--text);
   background: var(--grad-soft);

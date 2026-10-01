@@ -205,7 +205,7 @@ export const usePlayerStore = defineStore('player', {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: song.name,
           artist: song.singerName || '',
-          album: '悦听 · 在线音乐',
+          album: '弦歌 · 诗乐雅集',
           artwork: [{ src: 'favicon.svg', sizes: '64x64', type: 'image/svg+xml' }]
         })
       } catch { /* ignore */ }

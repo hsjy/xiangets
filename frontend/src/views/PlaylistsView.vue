@@ -146,8 +146,8 @@ onMounted(load)
   left: 8px;
   opacity: 0;
   transition: opacity 0.15s;
-  background: rgba(8, 9, 14, 0.7);
-  border-color: rgba(244, 63, 94, 0.4);
+  background: rgba(46, 38, 24, 0.65);
+  border-color: rgba(127, 29, 29, 0.5);
 }
 .pl-wrap:hover .del-btn { opacity: 1; }
 </style>

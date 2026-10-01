@@ -1,10 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8b5cf6"/>
-      <stop offset="1" stop-color="#ec4899"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#g)"/>
-  <path d="M42 14v22.5a7.5 7.5 0 1 1-4-6.64V22l-14 3.5v17a7.5 7.5 0 1 1-4-6.64V20L42 14z" fill="#fff"/>
+  <!-- 朱文方印「弦歌」 -->
+  <rect width="64" height="64" rx="8" fill="#a5402d"/>
+  <rect x="4" y="4" width="56" height="56" rx="5" fill="none" stroke="#fbf6ea" stroke-width="2.5"/>
+  <text x="32" y="27" font-family="STKaiti, KaiTi, 'Songti SC', serif" font-size="24" font-weight="bold" fill="#fbf6ea" text-anchor="middle">弦</text>
+  <text x="32" y="54" font-family="STKaiti, KaiTi, 'Songti SC', serif" font-size="24" font-weight="bold" fill="#fbf6ea" text-anchor="middle">歌</text>
 </svg>

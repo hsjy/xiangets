@@ -28,7 +28,7 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !useUserStore().isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  document.title = to.meta.title ? `${to.meta.title} · 悦听` : '悦听 · 在线音乐'
+  document.title = to.meta.title ? `${to.meta.title} · 弦歌` : '弦歌 · 诗乐雅集'
 })
 
 export default router

@@ -86,7 +86,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(13, 15, 20, 0.82);
+  background: rgba(250, 246, 234, 0.88);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -115,7 +115,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
 }
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(166, 58, 43, 0.14);
 }
 
 .right { position: relative; }
@@ -169,6 +169,6 @@ onBeforeUnmount(() => document.removeEventListener('click', onClickOutside))
   cursor: pointer;
   text-align: left;
 }
-.menu-item:hover { background: rgba(255, 255, 255, 0.05); color: var(--text); }
+.menu-item:hover { background: rgba(166, 58, 43, 0.07); color: var(--text); }
 .menu-item.danger:hover { color: var(--danger); background: rgba(244, 63, 94, 0.08); }
 </style>

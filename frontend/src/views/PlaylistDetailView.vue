@@ -220,7 +220,7 @@ const STYLES = ['我的收藏', '流行', '摇滚', '民谣', '电子', '古风'
 .meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--text-3); font-size: 12.5px; margin-bottom: 12px; }
 .intro { color: var(--text-2); font-size: 13.5px; line-height: 1.8; margin: 0 0 16px; max-width: 620px; }
 .acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
-.acts .faved { color: var(--accent); border-color: rgba(236, 72, 153, 0.4); }
+.acts .faved { color: var(--accent); border-color: rgba(166, 58, 43, 0.45); }
 .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .order-tip { color: var(--text-3); font-size: 12px; margin-top: 12px; }
 </style>

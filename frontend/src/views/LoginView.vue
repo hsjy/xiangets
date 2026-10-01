@@ -75,17 +75,18 @@ function fillDemo() {
 
 <template>
   <div class="login-page">
-    <div class="bg-orbs">
+    <div class="bg-ink">
       <div class="orb o1" />
       <div class="orb o2" />
       <div class="orb o3" />
+      <div class="mountains" />
     </div>
 
     <div class="login-card" data-test="login-card">
       <div class="head">
-        <div class="logo"><Icon name="disc" :size="26" /></div>
-        <h1>悦听</h1>
-        <p class="sub">在线音乐播放网站 · Vue3 + SpringBoot</p>
+        <div class="seal">弦歌</div>
+        <h1 class="font-brush">弦歌</h1>
+        <p class="sub">诗乐雅集 · 古诗配乐欣赏</p>
       </div>
 
       <div class="tabs">
@@ -140,57 +141,70 @@ function fillDemo() {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(1000px 500px at 80% -10%, rgba(236, 72, 153, 0.14), transparent),
-    radial-gradient(800px 400px at 10% 110%, rgba(139, 92, 246, 0.16), transparent),
+    radial-gradient(1000px 500px at 80% -10%, rgba(74, 124, 89, 0.1), transparent),
+    radial-gradient(800px 400px at 10% 110%, rgba(58, 54, 48, 0.12), transparent),
     var(--bg);
 }
-.bg-orbs { position: absolute; inset: 0; pointer-events: none; }
+/* 水墨背景：淡墨晕 + 远山剪影 */
+.bg-ink { position: absolute; inset: 0; pointer-events: none; }
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(70px);
-  opacity: 0.35;
-  animation: float 12s ease-in-out infinite;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: float 14s ease-in-out infinite;
 }
-.o1 { width: 320px; height: 320px; background: #8b5cf6; top: -60px; left: 12%; }
-.o2 { width: 260px; height: 260px; background: #ec4899; bottom: -40px; right: 14%; animation-delay: -4s; }
-.o3 { width: 180px; height: 180px; background: #38bdf8; top: 55%; left: 55%; animation-delay: -8s; }
+.o1 { width: 340px; height: 340px; background: rgba(58, 54, 48, 0.16); top: -80px; left: 10%; }
+.o2 { width: 280px; height: 280px; background: rgba(166, 58, 43, 0.1); bottom: -60px; right: 12%; animation-delay: -5s; }
+.o3 { width: 200px; height: 200px; background: rgba(47, 79, 79, 0.14); top: 52%; left: 56%; animation-delay: -9s; }
 @keyframes float { 50% { transform: translateY(-24px); } }
+.mountains {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38vh;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 420' preserveAspectRatio='none'%3E%3Cpath d='M0 420 L0 300 Q120 220 260 268 T540 236 T820 276 T1100 226 T1440 262 L1440 420 Z' fill='%233a3630' opacity='0.08'/%3E%3Cpath d='M0 420 L0 336 Q180 260 360 306 T720 286 T1080 316 T1440 286 L1440 420 Z' fill='%233a3630' opacity='0.12'/%3E%3Cpath d='M0 420 L0 372 Q240 310 480 348 T960 336 T1440 356 L1440 420 Z' fill='%233a3630' opacity='0.16'/%3E%3C/svg%3E");
+  background-size: cover;
+}
 
 .login-card {
   position: relative;
   width: min(400px, calc(100vw - 32px));
-  background: rgba(21, 25, 36, 0.86);
-  backdrop-filter: blur(14px);
-  border: 1px solid var(--border);
-  border-radius: 20px;
+  background: rgba(250, 246, 234, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
   padding: 34px 30px 26px;
   box-shadow: var(--shadow);
   z-index: 1;
 }
 .head { text-align: center; margin-bottom: 20px; }
-.logo {
-  width: 56px;
-  height: 56px;
+.seal {
+  width: 54px;
+  height: 54px;
   margin: 0 auto 12px;
-  border-radius: 16px;
-  background: var(--grad);
-  color: #fff;
+  border-radius: 6px;
+  background: var(--primary);
+  color: #fbf6ea;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.45);
+  font-family: 'Ma Shan Zheng', 'LXGW WenKai', 'Songti SC', serif;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: 2px;
+  text-indent: 2px;
+  box-shadow: 0 8px 22px rgba(166, 58, 43, 0.4);
 }
 .head h1 {
   margin: 0;
-  font-size: 26px;
-  letter-spacing: 6px;
-  background: linear-gradient(135deg, #a78bfa, #f472b6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 30px;
+  letter-spacing: 10px;
+  text-indent: 10px;
+  color: var(--ink);
 }
-.sub { margin: 6px 0 0; font-size: 12.5px; color: var(--text-3); }
+.sub { margin: 6px 0 0; font-size: 12.5px; color: var(--text-3); letter-spacing: 2px; }
 
 .tabs {
   position: relative;
@@ -213,7 +227,7 @@ function fillDemo() {
   border-radius: 8px;
   transition: color 0.2s;
 }
-.tabs button.on { color: #fff; font-weight: 600; }
+.tabs button.on { color: #fbf6ea; font-weight: 600; }
 .ink {
   position: absolute;
   top: 4px;

@@ -13,7 +13,7 @@ const hotSongs = ref([])
 const singers = ref([])
 const activeStyle = ref('')
 
-const STYLES = ['流行', '摇滚', '民谣', '电子', '古风', 'R&B', '学习', '通勤', '助眠']
+const STYLES = ['流行', '摇滚', '民谣', '电子', '古风', 'R&B', '学习', '通勤', '助眠'] // P1 换诗词内容时改为情绪标签
 
 async function load() {
   loading.value = true
@@ -46,8 +46,8 @@ onMounted(load)
     <!-- 顶部横幅 -->
     <section class="hero">
       <div class="hero-text">
-        <h1>遇见每一首心动好歌</h1>
-        <p>基于 Vue3 + SpringBoot 前后端分离架构的在线音乐播放网站</p>
+        <h1 class="font-brush">弦歌不辍 · 与君共听千年诗意</h1>
+        <p>古诗配乐与朗诵 · 基于 Vue3 + SpringBoot 前后端分离架构</p>
         <div class="hero-stats" v-if="stats">
           <div class="stat"><strong>{{ formatNumber(stats.songs) }}</strong><span>歌曲</span></div>
           <div class="stat"><strong>{{ formatNumber(stats.singers) }}</strong><span>歌手</span></div>
@@ -113,20 +113,32 @@ onMounted(load)
   justify-content: space-between;
   gap: 24px;
   background:
-    radial-gradient(600px 300px at 85% 20%, rgba(236, 72, 153, 0.2), transparent),
-    linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(30, 34, 48, 0.6));
-  border: 1px solid var(--border);
-  border-radius: 18px;
+    radial-gradient(600px 300px at 85% 20%, rgba(184, 134, 11, 0.1), transparent),
+    linear-gradient(135deg, rgba(166, 58, 43, 0.08), rgba(58, 54, 48, 0.85)),
+    #3a3630;
+  color: #efe8d6;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
   padding: 34px 38px;
   margin-bottom: 30px;
   overflow: hidden;
+  position: relative;
 }
-.hero-text h1 { margin: 0 0 8px; font-size: 26px; }
-.hero-text p { margin: 0; color: var(--text-2); font-size: 13.5px; }
+/* 水墨山影横幅 */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 300' preserveAspectRatio='none'%3E%3Cpath d='M0 300 L0 190 Q140 120 300 168 T640 130 T980 176 T1440 120 L1440 300 Z' fill='%23efe8d6' opacity='0.06'/%3E%3Cpath d='M0 300 L0 236 Q220 160 440 210 T880 190 T1440 220 L1440 300 Z' fill='%23efe8d6' opacity='0.09'/%3E%3C/svg%3E");
+  background-size: cover;
+  pointer-events: none;
+}
+.hero-text h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: 4px; color: #f5efdd; position: relative; z-index: 1; }
+.hero-text p { margin: 0; color: rgba(239, 232, 214, 0.72); font-size: 13.5px; position: relative; z-index: 1; }
 .hero-stats { display: flex; gap: 28px; margin-top: 22px; flex-wrap: wrap; }
-.stat strong { display: block; font-size: 22px; background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.stat span { font-size: 12px; color: var(--text-3); }
-.hero-disc { color: rgba(167, 139, 250, 0.35); animation: spin 14s linear infinite; flex-shrink: 0; }
+.stat strong { display: block; font-size: 22px; color: #e8c06a; position: relative; z-index: 1; }
+.stat span { font-size: 12px; color: rgba(239, 232, 214, 0.55); position: relative; z-index: 1; }
+.hero-disc { color: rgba(232, 192, 106, 0.3); animation: spin 20s linear infinite; flex-shrink: 0; position: relative; z-index: 1; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .block { margin-bottom: 34px; }

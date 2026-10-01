@@ -167,7 +167,7 @@ watch(() => player.currentId, async (id) => {
   right: 0;
   bottom: 0;
   height: var(--player-h);
-  background: rgba(18, 21, 29, 0.92);
+  background: rgba(250, 246, 234, 0.94);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);
   display: grid;
@@ -235,14 +235,14 @@ watch(() => player.currentId, async (id) => {
   cursor: pointer;
   transition: all 0.15s;
 }
-.ctl:hover:not(:disabled) { color: var(--text); background: rgba(255, 255, 255, 0.07); }
+.ctl:hover:not(:disabled) { color: var(--text); background: rgba(166, 58, 43, 0.09); }
 .ctl:disabled { opacity: 0.35; cursor: not-allowed; }
 .ctl.play {
   width: 44px;
   height: 44px;
   background: var(--grad);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 4px 14px rgba(166, 58, 43, 0.35);
 }
 .ctl.play:hover:not(:disabled) { filter: brightness(1.1); }
 .ctl.like.active { color: var(--accent); }
