@@ -24,8 +24,8 @@ public class MusicService {
     private final SingerMapper singerMapper;
     private final SongLikeMapper songLikeMapper;
 
-    public List<Song> listSongs(String keyword, String style, Long singerId, String sort) {
-        return songMapper.search(blank(keyword), blank(style), singerId, sort);
+    public List<Song> listSongs(String keyword, String style, Long singerId, Long poemId, String sort) {
+        return songMapper.search(blank(keyword), blank(style), singerId, poemId, sort);
     }
 
     public List<Song> hotSongs(int limit) {

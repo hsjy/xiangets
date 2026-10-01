@@ -26,8 +26,9 @@ public class MusicController {
     public Result<List<Song>> listSongs(@RequestParam(required = false) String keyword,
                                         @RequestParam(required = false) String style,
                                         @RequestParam(required = false) Long singerId,
+                                        @RequestParam(required = false) Long poemId,
                                         @RequestParam(required = false, defaultValue = "pop") String sort) {
-        return Result.ok(musicService.listSongs(keyword, style, singerId, sort));
+        return Result.ok(musicService.listSongs(keyword, style, singerId, poemId, sort));
     }
 
     @GetMapping("/song/hot")

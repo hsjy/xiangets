@@ -8,6 +8,10 @@ import java.util.Date;
 @Data
 public class Song {
     private Long id;
+    /** 关联的诗；NULL=纯氛围曲目 */
+    private Long poemId;
+    /** recitation 朗诵配乐 / bgm 纯音乐 / ai 生成 */
+    private String trackKind;
     private String name;
     private Long singerId;
     private String cover;

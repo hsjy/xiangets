@@ -5,7 +5,7 @@
 
     <!-- 列表查询统一带上歌手名，前端表格无需二次请求 -->
     <sql id="listJoin">
-        SELECT s.id, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
+        SELECT s.id, s.poem_id, s.track_kind, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
                s.play_count, s.create_time, si.name AS singer_name
         FROM song s
         LEFT JOIN singer si ON si.id = s.singer_id
@@ -23,6 +23,9 @@
             <if test="singerId != null">
                 AND s.singer_id = #{singerId}
             </if>
+            <if test="poemId != null">
+                AND s.poem_id = #{poemId}
+            </if>
         </where>
         <choose>
             <when test="sort == 'time'">
@@ -38,7 +41,7 @@
     </select>
 
     <select id="findById" resultType="Song">
-        SELECT s.id, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
+        SELECT s.id, s.poem_id, s.track_kind, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
                s.play_count, s.create_time, si.name AS singer_name
         FROM song s
         LEFT JOIN singer si ON si.id = s.singer_id
@@ -53,7 +56,7 @@
 
     <!-- FIELD() 让结果按传入 ID 数组的顺序返回，保证歌单内的自定义排序不丢 -->
     <select id="findByIdsInOrder" resultType="Song">
-        SELECT s.id, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
+        SELECT s.id, s.poem_id, s.track_kind, s.name, s.singer_id, s.cover, s.url, s.duration, s.style,
                s.play_count, s.create_time, si.name AS singer_name
         FROM song s
         LEFT JOIN singer si ON si.id = s.singer_id

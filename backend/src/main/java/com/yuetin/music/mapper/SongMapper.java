@@ -12,6 +12,7 @@ public interface SongMapper {
     List<Song> search(@Param("keyword") String keyword,
                       @Param("style") String style,
                       @Param("singerId") Long singerId,
+                      @Param("poemId") Long poemId,
                       @Param("sort") String sort);
 
     Song findById(@Param("id") Long id);
