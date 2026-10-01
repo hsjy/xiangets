@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.PoemMapper">
+
+    <sql id="listCols">
+        m.id, m.title, m.subtitle, m.poet_id, m.dynasty, m.genre, m.paragraphs,
+        m.mood, m.famous_line, m.create_time,
+        p.name AS poet_name, p.years AS poet_years, p.title AS poet_title
+    </sql>
+
+    <!-- 详情额外带译/注/赏（列表不下发长文） -->
+    <select id="findById" resultType="Poem">
+        SELECT <include refid="listCols"/>,
+               m.annotation, m.translation, m.appreciation
+        FROM poem m
+        JOIN poet p ON p.id = m.poet_id
+        WHERE m.id = #{id}
+    </select>
+
+    <select id="search" resultType="Poem">
+        SELECT <include refid="listCols"/>
+        FROM poem m
+        JOIN poet p ON p.id = m.poet_id
+        <where>
+            <if test="dynasty != null and dynasty != ''">AND m.dynasty = #{dynasty}</if>
+            <if test="mood != null and mood != ''">AND m.mood = #{mood}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (m.title LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.subtitle LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.paragraphs LIKE CONCAT('%', #{keyword}, '%')
+                     OR p.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY m.dynasty ASC, m.poet_id ASC, m.id ASC
+    </select>
+
+    <select id="findByPoet" resultType="Poem">
+        SELECT <include refid="listCols"/>
+        FROM poem m
+        JOIN poet p ON p.id = m.poet_id
+        WHERE m.poet_id = #{poetId}
+        ORDER BY m.id ASC
+    </select>
+
+    <!-- 今日一诗：按年内天数确定性轮换（幂等，刷新不变） -->
+    <select id="findByOffset" resultType="Poem">
+        SELECT <include refid="listCols"/>,
+               m.annotation, m.translation, m.appreciation
+        FROM poem m
+        JOIN poet p ON p.id = m.poet_id
+        LIMIT 1 OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM poem
+    </select>
+</mapper>
