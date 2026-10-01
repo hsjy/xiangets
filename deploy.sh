@@ -31,7 +31,7 @@ if ! gh auth status >/dev/null 2>&1; then
 fi
 
 # ---- 1. 构建前端 ------------------------------------------------------------
-say "构建前端（$DIST）"
+say "构建前端（${DIST}）"
 [ -d "$FRONTEND" ] || die "找不到前端目录：$FRONTEND"
 ( cd "$FRONTEND" && npm install --silent && npm run build )
 [ -f "$DIST/index.html" ] || die "构建失败：未生成 $DIST/index.html"
@@ -64,7 +64,7 @@ fi
 if gh repo view "$OWNER/$REPO" >/dev/null 2>&1; then
   ok "仓库已存在：$OWNER/$REPO"
 else
-  say "创建仓库 $OWNER/$REPO（project site）"
+  say "创建仓库 ${OWNER}/${REPO}（project site）"
   gh repo create "$OWNER/$REPO" \
     --public \
     --description "悦听 · Vue3 + SpringBoot 在线音乐播放网站" \
