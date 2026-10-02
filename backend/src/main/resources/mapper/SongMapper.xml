@@ -67,8 +67,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO song (name, singer_id, cover, url, duration, style, play_count, create_time)
-        VALUES (#{name}, #{singerId}, #{cover}, #{url}, #{duration}, #{style}, #{playCount}, NOW())
+        INSERT INTO song (name, singer_id, poem_id, track_kind, cover, url, duration, style, play_count, create_time)
+        VALUES (#{name}, #{singerId}, #{poemId}, #{trackKind}, #{cover}, #{url}, #{duration}, #{style}, #{playCount}, NOW())
     </insert>
 
     <update id="update">

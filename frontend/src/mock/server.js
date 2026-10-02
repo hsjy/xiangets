@@ -486,6 +486,32 @@ export async function handle(ctx) {
       }
     }
 
+    /* ===== AI 谱曲（mock：本地即时完成，音频留待真实后端） ===== */
+    if (seg[0] === 'ai' && seg[1] === 'music') {
+      const db = loadDB()
+      db.aiMusic = db.aiMusic || []
+      if (method === 'POST' && seg[2] === 'generate') {
+        const poemId = Number(ctx.body?.poemId)
+        const existed = db.aiMusic.find((j) => j.poemId === poemId && j.status === 'done')
+        if (existed) return ok(existed)
+        const job = {
+          id: db.aiMusic.length + 1, poemId, provider: 'preset',
+          prompt: 'chinese traditional, guzheng (mock)', status: 'done',
+          audioUrl: '', trackName: '', duration: 60,
+          createTime: Date.now(), finishTime: Date.now()
+        }
+        db.aiMusic.push(job)
+        return ok(job)
+      }
+      if (method === 'GET' && seg[2] === 'job' && seg[3]) {
+        const j = db.aiMusic.find((x) => x.id === Number(seg[3]))
+        return j ? ok(j) : fail(404, '任务不存在')
+      }
+      if (method === 'GET' && seg[2] === 'list' && seg[3]) {
+        return ok(db.aiMusic.filter((j) => j.poemId === Number(seg[3]) && j.status === 'done'))
+      }
+    }
+
     /* ===== 站点统计 ===== */
     if (seg[0] === 'stats' && seg[1] === 'overview' && method === 'GET') {
       const db = loadDB()

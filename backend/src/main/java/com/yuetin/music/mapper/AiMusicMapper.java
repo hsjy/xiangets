@@ -1,0 +1,21 @@
+package com.yuetin.music.mapper;
+
+import com.yuetin.music.entity.AiMusic;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+
+public interface AiMusicMapper {
+
+    AiMusic findById(@Param("id") Long id);
+
+    /** 某诗最近一次任务（缓存判断用） */
+    AiMusic latestByPoem(@Param("poemId") Long poemId);
+
+    int insert(AiMusic job);
+
+    int update(AiMusic job);
+
+    /** 任务完成后回填音轨信息，便于前端直接播放 */
+    List<AiMusic> findByPoemWithTrack(@Param("poemId") Long poemId);
+}

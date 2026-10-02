@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { poetryApi, poemFavApi, poemCommentApi, songApi } from '../api'
+import { poetryApi, poemFavApi, poemCommentApi, songApi, aiMusicApi } from '../api'
 import { usePlayerStore } from '../stores/player'
 import { useUserStore } from '../stores/user'
 import { confirmAction } from '../stores/ui'
@@ -22,12 +22,15 @@ const commentText = ref('')
 const submitting = ref(false)
 const similar = ref([])
 const activeTrackId = ref(null)
+const aiJob = ref(null)          // 谱曲任务：{id, status, audioUrl...}
+const polling = ref(false)
 
 const lines = computed(() => (poem.value?.paragraphs || '').split('\n').filter(Boolean))
 const fullTitle = computed(() => poem.value
   ? poem.value.title + (poem.value.subtitle ? '·' + poem.value.subtitle : '')
   : '')
 
+const aiTracks = computed(() => tracks.value.filter((t) => t.trackKind === 'ai'))
 const recitations = computed(() => tracks.value.filter((t) => t.trackKind === 'recitation'))
 const bgms = computed(() => tracks.value.filter((t) => t.trackKind === 'bgm'))
 
@@ -62,6 +65,48 @@ function playTrack(t) {
   }
   activeTrackId.value = t.id
   player.playSong({ ...t, singerName: t.name.match(/（(.+?)）/)?.[1] || poem.value?.poetName })
+}
+
+/** 为此诗谱曲：发起任务并轮询，完成后刷新音轨 */
+async function compose() {
+  if (polling.value) return
+  try {
+    const { data: job } = await aiMusicApi.generate(poem.value.id)
+    aiJob.value = job
+    if (job.status === 'done') {
+      await refreshTracks()
+      toast.success('AI 谱曲完成，可试听')
+      return
+    }
+    if (job.status === 'failed') {
+      toast.error('谱曲失败：' + (job.error || '未知原因'))
+      return
+    }
+    polling.value = true
+    for (let i = 0; i < 100; i++) {
+      await new Promise((r) => setTimeout(r, 1500))
+      const { data: j } = await aiMusicApi.job(job.id)
+      aiJob.value = j
+      if (j.status === 'done') {
+        await refreshTracks()
+        toast.success('AI 谱曲完成，可试听')
+        break
+      }
+      if (j.status === 'failed') {
+        toast.error('谱曲失败：' + (j.error || '未知原因'))
+        break
+      }
+    }
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    polling.value = false
+  }
+}
+
+async function refreshTracks() {
+  const { data } = await songApi.list({ poemId: poem.value.id })
+  tracks.value = data
 }
 
 async function toggleFav() {
@@ -142,21 +187,27 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
             <div class="tracks card" v-if="tracks.length">
               <p class="t-label">以乐佐诗</p>
               <button
-                v-for="t in [...recitations, ...bgms]" :key="t.id"
+                v-for="t in [...aiTracks, ...recitations, ...bgms]" :key="t.id"
                 class="track" :class="{ playing: activeTrackId === t.id }"
                 @click="playTrack(t)"
               >
-                <span class="t-kind">{{ t.trackKind === 'recitation' ? '诵' : '乐' }}</span>
+                <span class="t-kind" :class="'k-' + t.trackKind">{{ { recitation: '诵', bgm: '乐', ai: 'AI' }[t.trackKind] }}</span>
                 <span class="t-name">{{ t.name }}</span>
                 <span class="t-dur">{{ Math.round(t.duration) }}″</span>
               </button>
             </div>
 
             <div class="actions">
+              <button class="btn compose" :disabled="polling" @click="compose" data-test="ai-compose">
+                {{ polling ? '谱曲中…' : aiJob?.status === 'done' ? '✦ 再谱一曲' : '✦ 为此诗谱曲' }}
+              </button>
               <button class="btn fav" :class="{ on: favorited }" @click="toggleFav" data-test="poem-fav">
                 {{ favorited ? '✓ 已入书斋' : '收入书斋' }}
               </button>
             </div>
+            <p class="compose-note" v-if="aiJob">
+              {{ aiJob.status === 'done' ? `已按「${poem.mood}」意象谱成 · ${aiJob.provider === 'acestep' ? 'ACE-Step 实时生成' : '本地预生成兜底'}` : aiJob.status === 'failed' ? aiJob.error : '正在依诗之意象谱曲…' }}
+            </p>
           </div>
         </div>
       </section>
@@ -321,11 +372,17 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
   justify-content: center;
   flex-shrink: 0;
 }
+.t-kind.k-bgm { background: var(--primary); }
+.t-kind.k-ai { background: var(--accent); font-size: 9px; font-weight: 700; }
 .track .t-kind:last-child { background: var(--primary); }
 .t-name { flex: 1; font-size: 13px; }
 .t-dur { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
 .actions { display: flex; gap: 10px; }
+.compose { background: var(--accent); color: #fbf6ea; border: none; }
+.compose:hover:not(:disabled) { filter: brightness(1.1); }
+.compose:disabled { opacity: 0.7; }
+.compose-note { margin: -6px 0 0; font-size: 12px; color: var(--text-3); }
 .fav { border: 1px solid var(--border-strong); background: var(--card); color: var(--text-2); }
 .fav:hover { border-color: var(--seal); color: var(--seal); }
 .fav.on { background: var(--seal); border-color: var(--seal); color: #fbf6ea; }

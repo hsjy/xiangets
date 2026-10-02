@@ -82,6 +82,13 @@ export const poetryApi = {
   poetDetail: (id) => request.get(`/poet/detail/${id}`)
 }
 
+/* AI 谱曲（古诗转音乐） */
+export const aiMusicApi = {
+  generate: (poemId) => request.post('/ai/music/generate', { poemId }),
+  job: (id) => request.get(`/ai/music/job/${id}`),
+  list: (poemId) => request.get(`/ai/music/list/${poemId}`)
+}
+
 /* 收藏的诗（书斋） */
 export const poemFavApi = {
   toggle: (id) => request.post(`/poem/favorite/${id}`),

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.AiMusicMapper">
+
+    <sql id="cols">
+        a.id, a.poem_id, a.provider, a.prompt, a.lyrics, a.status, a.error,
+        a.track_id, a.create_time, a.finish_time
+    </sql>
+
+    <select id="findById" resultType="AiMusic">
+        SELECT <include refid="cols"/> FROM ai_music a WHERE a.id = #{id}
+    </select>
+
+    <select id="latestByPoem" resultType="AiMusic">
+        SELECT <include refid="cols"/> FROM ai_music a
+        WHERE a.poem_id = #{poemId}
+        ORDER BY a.id DESC LIMIT 1
+    </select>
+
+    <select id="findByPoemWithTrack" resultType="AiMusic">
+        SELECT <include refid="cols"/>,
+               s.url AS audio_url, s.name AS track_name, s.duration
+        FROM ai_music a
+        LEFT JOIN song s ON s.id = a.track_id
+        JOIN poem m ON m.id = a.poem_id
+        WHERE a.poem_id = #{poemId} AND a.status = 'done'
+        ORDER BY a.id DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_music (poem_id, provider, prompt, lyrics, status, create_time)
+        VALUES (#{poemId}, #{provider}, #{prompt}, #{lyrics}, #{status}, NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE ai_music
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="error != null">error = #{error},</if>
+            <if test="trackId != null">track_id = #{trackId},</if>
+            <if test="finishTime != null">finish_time = #{finishTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+</mapper>

@@ -35,6 +35,9 @@ yuetin:
     # 允许的前端来源，逗号分隔；* 表示不限制
     allowed-origins: ${CORS_ORIGINS:*}
   audio-dir: ${AUDIO_DIR:./audio}
+  ai:
+    # ACE-Step 推理服务地址；留空时使用预生成曲兜底
+    acestep-url: ${AI_ACESTEP_URL:}
 
 logging:
   level:
