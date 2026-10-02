@@ -548,6 +548,10 @@ export async function handle(ctx) {
           const m = POEMS.map(poemView).find((x) => x.id === Number(seg[2]))
           return m ? ok(m) : fail(404, '诗不存在')
         }
+        if (method === 'GET' && seg[1] === 'random') {
+          const i = Math.floor(Math.random() * POEMS.length)
+          return ok(poemView(POEMS[i]))
+        }
         if (method === 'GET' && seg[1] === 'today') {
           if (!POEMS.length) return ok({ poem: null })
           const day = Math.floor(Date.now() / 86400000) % POEMS.length

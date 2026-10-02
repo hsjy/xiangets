@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { poetryApi, songApi } from '../api'
 import { usePlayerStore } from '../stores/player'
 import Icon from '../components/Icon.vue'
@@ -7,33 +7,86 @@ import UserAvatar from '../components/UserAvatar.vue'
 
 const player = usePlayerStore()
 const loading = ref(true)
-const today = ref(null)
+const heroPoem = ref(null)   // 此刻：随机一诗，古图依其情绪而生
+const today = ref(null)      // 今日一诗：按日期轮换
 const facets = ref(null)
 const poets = ref([])
-const showcase = ref([])   // [{poem, aiTrack}]
-const heroQuote = ref('')
-onMounted(load)
+const showcase = ref([])     // [{poem, aiTrack}]
 
-async function load() {
+/* ---- 依情绪的场景调色盘：天空 / 山色 / 云雾 / 日月 ---- */
+const SCENES = {
+  '月夜':  { sky: ['#dfe3d2', '#b7c2b2'], mount: ['#3c4a44', '#435550', '#4a5c52'], mist: 0.85, moon: true,  birds: 2, label: '月夜' },
+  '思乡':  { sky: ['#f0e4c8', '#d9c49a'], mount: ['#4a4640', '#54504a', '#5c5850'], mist: 0.7,  moon: true,  birds: 1, label: '暮色' },
+  '送别':  { sky: ['#f2e3c4', '#d8bf94'], mount: ['#4f4a40', '#585247', '#615a4d'], mist: 0.8,  moon: false, birds: 1, label: '暮别' },
+  '怀人':  { sky: ['#ece7d6', '#cdc9b4'], mount: ['#41453e', '#4a4f46', '#53584e'], mist: 0.9,  moon: false, birds: 2, label: '烟雨' },
+  '田园':  { sky: ['#f6f0dc', '#e7dcb8'], mount: ['#43573f', '#4c6147', '#566c50'], mist: 0.6,  moon: false, birds: 2, label: '晨晓' },
+  '山水':  { sky: ['#eef0e0', '#d3dcc4'], mount: ['#3f5248', '#475c50', '#506658'], mist: 0.7,  moon: false, birds: 2, label: '青绿' },
+  '闲适':  { sky: ['#f6f0dc', '#e9e0c4'], mount: ['#46583f', '#4f6249', '#586c52'], mist: 0.55, moon: false, birds: 2, label: '春晓' },
+  '家国':  { sky: ['#e4e0d0', '#c2c2b2'], mount: ['#3e423c', '#464a43', '#4e524a'], mist: 0.75, moon: false, birds: 1, label: '苍茫' },
+  '悲秋':  { sky: ['#efe6d2', '#d6c8ac'], mount: ['#4a463c', '#534e42', '#5c564a'], mist: 0.8,  moon: false, birds: 1, label: '秋暮' },
+  '豪放':  { sky: ['#e6e4d0', '#c0c4b0'], mount: ['#36403a', '#3d4842', '#44504a'], mist: 0.6,  moon: false, birds: 2, label: '长风' },
+  '壮志':  { sky: ['#e2e2d2', '#bec4b2'], mount: ['#333e38', '#3a463f', '#424e47'], mist: 0.65, moon: false, birds: 2, label: '金戈' },
+  '哲理':  { sky: ['#eff0e2', '#d0d6c4'], mount: ['#414b44', '#49544b', '#525d53'], mist: 0.7,  moon: false, birds: 1, label: '山霭' },
+}
+const DEFAULT_SCENE = SCENES['月夜']
+
+/* ---- 过程化山脊：每次刷新 / 换一首，山形都不重样 ---- */
+function makeRidge(rand, baseY, amp, seg = 6) {
+  let d = `M0 320 L0 ${(baseY + rand() * amp * 0.4).toFixed(0)}`
+  const w = 1440 / seg
+  for (let i = 0; i < seg; i++) {
+    const x1 = (i * w + w * (0.3 + rand() * 0.4)).toFixed(0)
+    const y1 = (baseY - rand() * amp).toFixed(0)
+    const x2 = ((i + 1) * w).toFixed(0)
+    const y2 = (baseY - rand() * amp * 0.55).toFixed(0)
+    d += ` Q${x1} ${y1} ${x2} ${y2}`
+  }
+  d += ' L1440 320 Z'
+  return d
+}
+
+const scene = computed(() => SCENES[heroPoem.value?.mood] || DEFAULT_SCENE)
+const ridges = ref([])
+const birds = ref([])
+
+function rollScene() {
+  const r = Math.random
+  ridges.value = [
+    makeRidge(r, 205, 130),
+    makeRidge(r, 248, 95),
+    makeRidge(r, 285, 62),
+  ]
+  birds.value = Array.from({ length: scene.value.birds }, () => ({
+    top: 18 + Math.round(r() * 22),
+    delay: -Math.round(r() * 40),
+    dur: 30 + Math.round(r() * 24),
+    scale: 0.7 + r() * 0.6,
+  }))
+}
+
+async function rollPoem() {
+  const { data } = await poetryApi.random()
+  heroPoem.value = data
+  rollScene()
+}
+
+onMounted(async () => {
   try {
-    const [t, f, g] = await Promise.allSettled([
+    const [h, t, f, g] = await Promise.allSettled([
+      poetryApi.random(),
       poetryApi.today(),
       poetryApi.facets(),
       poetryApi.poetList()
     ])
-    if (t.status === 'fulfilled') {
-      today.value = t.value.data
-      heroQuote.value = today.value?.poem?.famousLine || '弦歌不辍'
-    }
+    if (h.status === 'fulfilled') { heroPoem.value = h.value.data; rollScene() }
+    if (t.status === 'fulfilled') today.value = t.value.data
     if (f.status === 'fulfilled') facets.value = f.value.data
     if (g.status === 'fulfilled') poets.value = g.value.data
 
     /* AI 谱曲 showcase：取三首已有 AI 轨的诗 */
     const demo = [18, 8, 24]
     const got = await Promise.allSettled(
-      demo.map((id) =>
-        Promise.all([poetryApi.poemDetail(id), songApi.list({ poemId: id })])
-      )
+      demo.map((id) => Promise.all([poetryApi.poemDetail(id), songApi.list({ poemId: id })]))
     )
     showcase.value = got
       .filter((g2) => g2.status === 'fulfilled')
@@ -45,7 +98,7 @@ async function load() {
   } finally {
     loading.value = false
   }
-}
+})
 
 function playTrack(t, poem) {
   player.playSong({ ...t, singerName: poem.poetName })
@@ -56,33 +109,35 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
 
 <template>
   <div class="home">
-    <!-- ============ 动态古图 hero ============ -->
+    <!-- ============ 动态古图 hero：依「此刻」之诗而生 ============ -->
     <section class="hero" data-test="hero">
-      <div class="sky"></div>
-      <div class="moon"></div>
+      <div class="sky" :style="{ background: `linear-gradient(180deg, ${scene.sky[0]} 0%, ${scene.sky[1]} 62%, ${scene.mount[2]}33 100%)` }"></div>
+      <div v-if="scene.moon" class="moon" :style="{ top: heroPoem?.mood === '月夜' ? '13%' : '20%' }"></div>
 
-      <!-- 三层远山，视差漂移 -->
+      <!-- 三层过程化山脊，视差漂移 -->
       <svg class="mount m1" viewBox="0 0 1440 320" preserveAspectRatio="none">
-        <path d="M0 320 L0 200 Q160 110 340 168 T700 128 T1060 176 T1440 112 L1440 320 Z" fill="#3f4a42" opacity="0.16"/>
+        <path :d="ridges[0]" :fill="scene.mount[0]" opacity="0.16"/>
       </svg>
       <svg class="mount m2" viewBox="0 0 1440 320" preserveAspectRatio="none">
-        <path d="M0 320 L0 244 Q220 156 460 214 T900 184 T1440 226 L1440 320 Z" fill="#3f4a42" opacity="0.24"/>
+        <path :d="ridges[1]" :fill="scene.mount[1]" opacity="0.26"/>
       </svg>
       <svg class="mount m3" viewBox="0 0 1440 320" preserveAspectRatio="none">
-        <path d="M0 320 L0 282 Q260 210 520 254 T1040 240 T1440 266 L1440 320 Z" fill="#333f38" opacity="0.4"/>
+        <path :d="ridges[2]" :fill="scene.mount[2]" opacity="0.42"/>
       </svg>
 
       <!-- 云雾 -->
-      <div class="mist w1"></div>
-      <div class="mist w2"></div>
+      <div class="mist w1" :style="{ opacity: scene.mist }"></div>
+      <div class="mist w2" :style="{ opacity: scene.mist * 0.8, animationDelay: '-14s' }"></div>
 
       <!-- 飞鸟 -->
-      <svg class="birds b1" viewBox="0 0 120 40">
+      <svg
+        v-for="(b, i) in birds" :key="i"
+        class="birds" :class="'b' + i"
+        :style="{ top: b.top + '%', animationDuration: b.dur + 's', animationDelay: b.delay + 's' }"
+        viewBox="0 0 120 40"
+      >
         <path d="M4 26 Q14 14 24 26 Q34 14 44 26" fill="none" stroke="#3a3630" stroke-width="2.4" stroke-linecap="round" opacity="0.55"/>
         <path d="M58 18 Q66 8 74 18 Q82 8 90 18" fill="none" stroke="#3a3630" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
-      </svg>
-      <svg class="birds b2" viewBox="0 0 120 40">
-        <path d="M10 22 Q20 12 30 22 Q40 12 50 22" fill="none" stroke="#3a3630" stroke-width="2" stroke-linecap="round" opacity="0.35"/>
       </svg>
 
       <!-- 竖排题字 -->
@@ -90,10 +145,17 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
         <p class="hw-line font-brush">诗为经</p>
         <p class="hw-line dim font-brush">乐为纬</p>
       </div>
+
       <div class="hero-title">
-        <p class="ht-sub">弦歌 · 诗乐雅集</p>
-        <h1 class="ht-main font-brush">{{ heroQuote || '弦歌不辍' }}</h1>
-        <p class="ht-hint">一首诗，一阙乐，一卷古人的心事</p>
+        <p class="ht-sub">弦歌 · 诗乐雅集 · 此刻〔{{ scene.label }}〕</p>
+        <h1 class="ht-main font-brush" data-test="hero-line">{{ heroPoem?.famousLine || heroPoem?.title || '弦歌不辍' }}</h1>
+        <p class="ht-poem" v-if="heroPoem">
+          <router-link :to="`/poem/${heroPoem.id}`">《{{ fullTitle(heroPoem) }}》</router-link>
+          · {{ heroPoem.poetName }} · {{ heroPoem.dynasty }}
+        </p>
+        <button class="reroll" data-test="hero-reroll" @click="rollPoem">
+          <Icon name="compass" :size="14" /> 换一首 · 换一景
+        </button>
       </div>
 
       <div class="reeds">
@@ -113,7 +175,7 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
     <section v-reveal class="sec" v-if="today?.poem">
       <div class="today-card">
         <div class="tc-left">
-          <p class="tc-date">{{ today.date }} · 今日一诗</p>
+          <p class="tc-date">{{ today.date }} · 今日一诗 · 与「此刻」不同，今日只此一首</p>
           <h2 class="tc-famous font-brush">「{{ today.poem.famousLine || today.poem.title }}」</h2>
           <p class="tc-meta">
             <router-link :to="`/poem/${today.poem.id}`">《{{ fullTitle(today.poem) }}》</router-link>
@@ -214,15 +276,10 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
   align-items: center;
   justify-content: center;
 }
-.sky {
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(900px 480px at 78% 18%, rgba(232, 192, 106, 0.28), transparent 60%),
-    linear-gradient(180deg, #f4eeda 0%, #ece5cd 58%, #e3d9bd 100%);
-}
+.sky { position: absolute; inset: 0; }
 .moon {
   position: absolute;
-  top: 14%; right: 18%;
+  right: 18%;
   width: 84px; height: 84px;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 34%, #fef9ec, #e8d894 78%);
@@ -246,12 +303,10 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
   animation: mistdrift 38s ease-in-out infinite alternate;
 }
 .w1 { width: 46%; left: 4%; bottom: 22%; }
-.w2 { width: 38%; right: 2%; bottom: 30%; animation-delay: -14s; }
-@keyframes mistdrift { from { transform: translateX(-5%); opacity: 0.7; } to { transform: translateX(7%); opacity: 1; } }
+.w2 { width: 38%; right: 2%; bottom: 30%; }
+@keyframes mistdrift { from { transform: translateX(-5%); } to { transform: translateX(7%); } }
 
-.birds { position: absolute; width: 110px; opacity: 0.9; }
-.b1 { top: 24%; left: -12%; animation: fly 34s linear infinite; }
-.b2 { top: 33%; left: -18%; animation: fly 46s linear infinite; animation-delay: -12s; }
+.birds { position: absolute; left: -12%; width: 110px; opacity: 0.9; animation: fly linear infinite; }
 @keyframes fly { from { transform: translateX(0); } to { transform: translateX(130vw); } }
 
 .reeds { position: absolute; left: 0; right: 0; bottom: -2px; height: 130px; }
@@ -279,10 +334,27 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
 }
 .hw-line.dim { font-size: 24px; opacity: 0.7; margin-top: 44px; }
 
-.hero-title { position: relative; text-align: center; padding: 0 20px; }
-.ht-sub { margin: 0 0 14px; letter-spacing: 6px; font-size: 14px; color: rgba(58, 54, 48, 0.6); }
-.ht-main { margin: 0 0 16px; font-size: clamp(30px, 5.4vw, 52px); color: #2f2a20; letter-spacing: 6px; }
-.ht-hint { margin: 0; font-size: 14px; color: rgba(58, 54, 48, 0.55); letter-spacing: 2px; }
+.hero-title { position: relative; text-align: center; padding: 0 20px; max-width: 900px; }
+.ht-sub { margin: 0 0 14px; letter-spacing: 6px; font-size: 14px; color: rgba(58, 54, 48, 0.62); }
+.ht-main { margin: 0 0 14px; font-size: clamp(30px, 5.4vw, 52px); color: #2f2a20; letter-spacing: 6px; text-shadow: 0 0 22px rgba(250, 246, 234, 0.75); }
+.ht-poem { margin: 0 0 18px; font-size: 15px; }
+.ht-poem a { color: var(--primary-2); }
+.reroll {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: rgba(251, 246, 234, 0.75);
+  color: var(--text-2);
+  font-size: 13.5px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.reroll:hover { color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(64, 99, 77, 0.18); }
 
 .scroll-hint {
   position: absolute;

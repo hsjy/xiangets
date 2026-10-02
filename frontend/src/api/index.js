@@ -76,6 +76,7 @@ export const statsApi = {
 export const poetryApi = {
   poemList: (params) => request.get('/poem/list', { params }),
   poemDetail: (id) => request.get(`/poem/detail/${id}`),
+  random: () => request.get('/poem/random'),
   today: () => request.get('/poem/today'),
   facets: () => request.get('/poem/facets'),
   poetList: (params) => request.get('/poet/list', { params }),

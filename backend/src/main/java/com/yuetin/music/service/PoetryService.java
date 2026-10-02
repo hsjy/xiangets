@@ -40,6 +40,16 @@ public class PoetryService {
     /**
      * 今日一诗：按年内天数确定性轮换，同一天所有人看到同一首。
      */
+    /** 随机一诗：每次调用都可能不同（首页「此刻」卷首用）。 */
+    public Poem randomPoem() {
+        long count = poemMapper.countAll();
+        if (count == 0) throw BizException.notFound("诗库为空");
+        int offset = java.util.concurrent.ThreadLocalRandom.current().nextInt((int) count);
+        Poem poem = poemMapper.findByOffset(offset);
+        if (poem == null) throw BizException.notFound("诗不存在");
+        return poem;
+    }
+
     public Map<String, Object> todayPoem() {
         long count = poemMapper.countAll();
         Map<String, Object> data = new HashMap<>();

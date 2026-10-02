@@ -37,6 +37,12 @@ public class PoetryController {
         return Result.ok(poetryService.poemDetail(id));
     }
 
+    /** 随机一诗：每次刷新都可能不同。 */
+    @GetMapping("/poem/random")
+    public Result<Poem> random() {
+        return Result.ok(poetryService.randomPoem());
+    }
+
     /** 今日一诗：按日期确定性轮换。 */
     @GetMapping("/poem/today")
     public Result<Map<String, Object>> today() {
