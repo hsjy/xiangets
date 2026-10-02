@@ -49,6 +49,20 @@ const aiTracks = computed(() => tracks.value.filter((t) => t.trackKind === 'ai')
 const recitations = computed(() => tracks.value.filter((t) => t.trackKind === 'recitation'))
 const bgms = computed(() => tracks.value.filter((t) => t.trackKind === 'bgm'))
 
+/**
+ * 注：原文是一条连写的长串，按「句号 + 短词 + 冒号」切成独立条目，
+ * 例如「渭城：……。浥：……。」切成两条。词条本身以句读收尾，
+ * 故只在句号后紧跟「词：」时才断开，不会误伤释义中的句读。
+ */
+const zhuanItems = computed(() => {
+  const raw = (poem.value?.annotation || '').trim()
+  if (!raw) return []
+  return raw
+    .split(/(?<=。)(?=[^。：]{1,10}：)/)
+    .map((s) => s.trim().replace(/[。；;]$/, ''))
+    .filter(Boolean)
+})
+
 async function load() {
   loading.value = true
   try {
@@ -242,7 +256,9 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
       <section class="sanlan">
         <div class="lan card" v-if="poem.annotation">
           <h3>注</h3>
-          <p>{{ poem.annotation }}</p>
+          <div class="zhuan">
+            <span v-for="(t, i) in zhuanItems" :key="i" class="zhuan-item">{{ t }}<i v-if="i < zhuanItems.length - 1">；</i></span>
+          </div>
         </div>
         <div class="lan card" v-if="poem.translation">
           <h3>译</h3>
@@ -438,6 +454,19 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .lan h3::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .lan p { margin: 0; font-size: 13.5px; line-height: 2; color: var(--text-2); }
 
+/* 注：一条一行，行末分号；左列排满框高后，余下的条目自动流入右列 */
+.zhuan {
+  height: 9.7em;           /* 约五行；内容少时只占左列，不留空白列 */
+  font-size: 13px;
+  line-height: 1.95;
+  color: var(--text-2);
+  column-count: 2;
+  column-gap: 18px;
+  column-fill: auto;
+}
+.zhuan-item { display: block; break-inside: avoid; }
+.zhuan-item i { font-style: normal; color: var(--text-3); }
+
 .sec-title { margin: 0 0 14px; font-size: 18px; }
 .sim-chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
 .sim-chip {
@@ -479,5 +508,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
   .v-line { font-size: 16px; letter-spacing: 2px; line-height: 2.2; }
   .v-sign { writing-mode: horizontal-tb; text-orientation: mixed; }
   .side-pane { max-width: none; }
+  /* 窄屏一列太窄，分列反而更难读 */
+  .zhuan { height: auto; column-count: 1; }
 }
 </style>
