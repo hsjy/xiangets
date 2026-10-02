@@ -54,17 +54,22 @@ async function load() {
   try {
     const { data } = await poetryApi.poemDetail(route.params.id)
     poem.value = data
-    const [t, c, f, s] = await Promise.allSettled([
+    const [t, c, f, s, ai] = await Promise.allSettled([
       songApi.list({ poemId: data.id }),
       poemCommentApi.list(data.id),
       poemFavApi.state(data.id),
-      data.mood ? poetryApi.poemList({ mood: data.mood }) : Promise.resolve({ data: [] })
+      data.mood ? poetryApi.poemList({ mood: data.mood }) : Promise.resolve({ data: [] }),
+      aiMusicApi.list(data.id)
     ])
     if (t.status === 'fulfilled') tracks.value = t.value.data
     if (c.status === 'fulfilled') comments.value = c.value.data
     if (f.status === 'fulfilled') favorited.value = f.value.data.favorited
     if (s.status === 'fulfilled') {
       similar.value = s.value.data.filter((m) => m.id !== data.id).slice(0, 6)
+    }
+    // 页面刷新后回显最近一次谱曲任务（提示词常驻可见）
+    if (ai.status === 'fulfilled' && ai.value.data?.length) {
+      aiJob.value = ai.value.data[0]
     }
   } catch {
     poem.value = null

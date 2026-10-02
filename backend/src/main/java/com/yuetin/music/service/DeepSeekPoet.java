@@ -74,7 +74,7 @@ public class DeepSeekPoet {
                             java.util.Map.of("role", "user", "content", user)
                     ),
                     "temperature", 1.1,
-                    "max_tokens", 500
+                    "max_tokens", 4000
             ));
         } catch (Exception e) {
             throw new IllegalStateException("构造请求失败", e);
