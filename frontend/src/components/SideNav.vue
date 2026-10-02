@@ -7,10 +7,10 @@ const route = useRoute()
 const player = usePlayerStore()
 
 const navs = [
-  { to: '/discover', icon: 'compass', label: '发现音乐' },
-  { to: '/songs', icon: 'music', label: '歌曲库' },
-  { to: '/singers', icon: 'mic', label: '歌手' },
-  { to: '/playlists', icon: 'list-music', label: '我的歌单', auth: true }
+  { to: '/today', icon: 'compass', label: '今日一诗' },
+  { to: '/poems', icon: 'list-music', label: '诗选' },
+  { to: '/poets', icon: 'users', label: '诗人' },
+  { to: '/study', icon: 'heart', label: '书斋' }
 ]
 </script>
 
@@ -43,7 +43,7 @@ const navs = [
 
     <div class="foot">
       <p>Vue3 · SpringBoot · MySQL</p>
-      <p>诗乐雅集 · 古诗配乐欣赏</p>
+      <p>诗为经 · 乐为纬</p>
     </div>
   </aside>
 </template>

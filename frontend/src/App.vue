@@ -7,7 +7,6 @@ import PlayerBar from './components/PlayerBar.vue'
 import QueueDrawer from './components/QueueDrawer.vue'
 import ToastHost from './components/ToastHost.vue'
 import ConfirmHost from './components/ConfirmHost.vue'
-import AddToPlaylistModal from './components/AddToPlaylistModal.vue'
 
 const route = useRoute()
 // 登录/注册页使用极简布局（无侧边栏与播放器）
@@ -26,7 +25,6 @@ const isBare = computed(() => route.meta.bare === true)
     </div>
     <PlayerBar />
     <QueueDrawer />
-    <AddToPlaylistModal />
   </div>
   <!-- Toast / 确认框必须在所有布局分支之外：登录/注册页（bare）也要能弹提示 -->
   <ToastHost />

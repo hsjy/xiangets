@@ -3,16 +3,26 @@ import { useUserStore } from '../stores/user'
 
 // GitHub Pages 为纯静态托管，使用 hash 路由避免刷新 404
 const routes = [
-  { path: '/', redirect: '/discover' },
+  { path: '/', redirect: '/today' },
   { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { bare: true } },
-  { path: '/discover', name: 'discover', component: () => import('../views/DiscoverView.vue'), meta: { title: '发现音乐' } },
-  { path: '/songs', name: 'songs', component: () => import('../views/SongsView.vue'), meta: { title: '歌曲库' } },
-  { path: '/song/:id', name: 'songDetail', component: () => import('../views/SongDetailView.vue'), meta: { title: '歌曲详情' } },
-  { path: '/singers', name: 'singers', component: () => import('../views/SingersView.vue'), meta: { title: '歌手' } },
-  { path: '/singer/:id', name: 'singerDetail', component: () => import('../views/SingerDetailView.vue'), meta: { title: '歌手详情' } },
-  { path: '/playlists', name: 'playlists', component: () => import('../views/PlaylistsView.vue'), meta: { title: '我的歌单', requiresAuth: true } },
-  { path: '/playlist/:id', name: 'playlistDetail', component: () => import('../views/PlaylistDetailView.vue'), meta: { title: '歌单详情' } },
+
+  /* 诗为主体 */
+  { path: '/today', name: 'today', component: () => import('../views/TodayView.vue'), meta: { title: '今日一诗' } },
+  { path: '/poems', name: 'poems', component: () => import('../views/PoemsView.vue'), meta: { title: '诗选' } },
+  { path: '/poem/:id', name: 'poemDetail', component: () => import('../views/PoemDetailView.vue'), meta: { title: '意境' } },
+  { path: '/poets', name: 'poets', component: () => import('../views/PoetsView.vue'), meta: { title: '诗人' } },
+  { path: '/poet/:id', name: 'poetDetail', component: () => import('../views/PoetDetailView.vue'), meta: { title: '诗人' } },
+  { path: '/study', name: 'study', component: () => import('../views/StudyView.vue'), meta: { title: '书斋', requiresAuth: true } },
   { path: '/profile', name: 'profile', component: () => import('../views/ProfileView.vue'), meta: { title: '个人资料', requiresAuth: true } },
+
+  /* 旧音乐站路由 → 新 IA 重定向 */
+  { path: '/discover', redirect: '/today' },
+  { path: '/songs', redirect: '/poems' },
+  { path: '/singers', redirect: '/poets' },
+  { path: '/playlists', redirect: '/study' },
+  { path: '/song/:id', redirect: (to) => '/poem/' + to.params.id },
+  { path: '/playlist/:id', redirect: '/study' },
+
   { path: '/:pathMatch(.*)*', name: 'notFound', component: () => import('../views/NotFoundView.vue'), meta: { title: '页面不存在' } }
 ]
 
@@ -28,7 +38,7 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !useUserStore().isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  document.title = to.meta.title ? `${to.meta.title} · 弦歌` : '弦歌 · 诗乐雅集'
+  document.title = to.meta.title ? to.meta.title + ' · 弦歌' : '弦歌 · 诗乐雅集'
 })
 
 export default router

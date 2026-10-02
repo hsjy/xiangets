@@ -6,6 +6,7 @@
  * 统一响应：{ code, message, data }；鉴权失败 401，无权限 403，资源不存在 404，参数错误 400。
  */
 import { loadDB, tx } from './db'
+import { POETS, POEMS, POEM_TRACKS } from './poetry_data'
 import { signToken, verifyToken } from './jwt'
 
 /* ---------------- 响应助手 ---------------- */
@@ -205,6 +206,12 @@ export async function handle(ctx) {
     if (seg[0] === 'song') {
       if (method === 'GET' && seg[1] === 'list') {
         const db = loadDB()
+        // 诗之音轨：按 poemId 查询时返回朗诵/配乐轨（来自 poetry_data）
+        if (ctx.query.poemId) {
+          const pid = Number(ctx.query.poemId)
+          return ok(POEM_TRACKS.filter((t) => t.poemId === pid)
+            .map((t) => ({ ...t, singerName: t.name.match(/（(.+?)）/)?.[1] || '数字乐府' })))
+        }
         return ok(songList(db, ctx.query))
       }
       if (method === 'GET' && seg[1] === 'hot') {
@@ -489,6 +496,108 @@ export async function handle(ctx) {
         playlists: db.playlist.length,
         totalPlays: db.song.reduce((s, x) => s + (x.playCount || 0), 0)
       })
+    }
+
+    /* ===== 诗与诗人（欣赏主体，数据来自 poetry_data.js，与 MySQL 保持一致） ===== */
+    if (seg[0] === 'poem' || seg[0] === 'poet') {
+      const db = loadDB()
+      db.poemComment = db.poemComment || []
+      db.poemFav = db.poemFav || {}
+      db.seq = db.seq || {}
+      const poetName = (id) => POETS.find((p) => p.id === id)?.name || ''
+      const poemView = (m) => ({ ...m, poetName: poetName(m.poetId) })
+
+      if (seg[0] === 'poem') {
+        if (method === 'GET' && seg[1] === 'list') {
+          let list = POEMS.map(poemView)
+          if (ctx.query.dynasty) list = list.filter((m) => m.dynasty === ctx.query.dynasty)
+          if (ctx.query.mood) list = list.filter((m) => m.mood === ctx.query.mood)
+          if (ctx.query.keyword) {
+            const k = ctx.query.keyword
+            list = list.filter((m) => (m.title + m.subtitle + m.paragraphs + m.poetName).includes(k))
+          }
+          return ok(list)
+        }
+        if (method === 'GET' && seg[1] === 'detail') {
+          const m = POEMS.map(poemView).find((x) => x.id === Number(seg[2]))
+          return m ? ok(m) : fail(404, '诗不存在')
+        }
+        if (method === 'GET' && seg[1] === 'today') {
+          if (!POEMS.length) return ok({ poem: null })
+          const day = Math.floor(Date.now() / 86400000) % POEMS.length
+          return ok({ poem: poemView(POEMS[day]), date: new Date().toISOString().slice(0, 10), index: day, total: POEMS.length })
+        }
+        if (method === 'GET' && seg[1] === 'facets') {
+          return ok({
+            dynasties: [...new Set(POETS.map((p) => p.dynasty))].sort(),
+            moods: [...new Set(POEMS.map((m) => m.mood).filter(Boolean))].sort(),
+            poemCount: POEMS.length
+          })
+        }
+        if (seg[1] === 'favorite') {
+          const { user, error } = await requireAuth(ctx)
+          if (error) return error
+          if (method === 'POST' && seg[2] && !seg[3]) {
+            const pid = Number(seg[2])
+            const arr = (db.poemFav[user.id] = db.poemFav[user.id] || [])
+            const i = arr.indexOf(pid)
+            if (i > -1) { arr.splice(i, 1); return ok({ favorited: false }) }
+            arr.push(pid); return ok({ favorited: true })
+          }
+          if (method === 'GET' && seg[2] === 'state' && seg[3]) {
+            return ok({ favorited: (db.poemFav[user.id] || []).includes(Number(seg[3])) })
+          }
+          if (method === 'GET' && seg[2] === 'list') {
+            const favs = db.poemFav[user.id] || []
+            return ok(POEMS.filter((m) => favs.includes(m.id)).map(poemView))
+          }
+        }
+        if (seg[1] === 'comment') {
+          const { user, error } = await requireAuth(ctx)
+          if (error && !(method === 'GET' && seg[2] === 'list')) return error
+          if (method === 'GET' && seg[2] === 'list' && seg[3]) {
+            const pid = Number(seg[3])
+            return ok(db.poemComment.filter((c) => c.poemId === pid)
+              .map((c) => ({ ...c, username: db.user.find((u) => u.id === c.userId)?.name || '已注销', avatar: '' })))
+          }
+          if (method === 'POST' && seg[2] === 'add') {
+            const poemId = Number(ctx.body?.poemId)
+            const content = String(ctx.body?.content || '').trim()
+            if (!content) return fail(400, '感悟内容不能为空')
+            if (!POEMS.find((m) => m.id === poemId)) return fail(404, '诗不存在')
+            const c = { id: db.seq.pc || 1, poemId, userId: user.id, content, createTime: Date.now() }
+            db.seq.pc = (db.seq.pc || 1) + 1
+            db.poemComment.push(c)
+            return ok({ ...c, username: user.name, avatar: '' })
+          }
+          if (method === 'GET' && seg[2] === 'mine') {
+            return ok(db.poemComment.filter((c) => c.userId === user.id)
+              .map((c) => ({ ...c, poemTitle: POEMS.find((m) => m.id === c.poemId)?.title })))
+          }
+          if (method === 'DELETE' && seg[2] === 'delete' && seg[3]) {
+            const idx = db.poemComment.findIndex((c) => c.id === Number(seg[3]) && c.userId === user.id)
+            if (idx < 0) return fail(403, '只能删除自己的感悟')
+            db.poemComment.splice(idx, 1)
+            return ok()
+          }
+        }
+      }
+
+      if (seg[0] === 'poet') {
+        if (method === 'GET' && seg[1] === 'list') {
+          let list = POETS.map((p) => ({ ...p, poemCount: POEMS.filter((m) => m.poetId === p.id).length }))
+          if (ctx.query.dynasty) list = list.filter((p) => p.dynasty === ctx.query.dynasty)
+          return ok(list)
+        }
+        if (method === 'GET' && seg[1] === 'detail' && seg[2]) {
+          const p = POETS.find((x) => x.id === Number(seg[2]))
+          if (!p) return fail(404, '诗人不存在')
+          return ok({
+            poet: { ...p, poemCount: POEMS.filter((m) => m.poetId === p.id).length },
+            poems: POEMS.filter((m) => m.poetId === p.id).map(poemView)
+          })
+        }
+      }
     }
 
     return fail(404, `接口不存在: ${method} /${seg.join('/')}`)

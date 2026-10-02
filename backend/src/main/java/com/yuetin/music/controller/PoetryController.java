@@ -5,7 +5,10 @@ import com.yuetin.music.entity.Poem;
 import com.yuetin.music.entity.Poet;
 import com.yuetin.music.service.PoetryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,5 +58,48 @@ public class PoetryController {
     @GetMapping("/poet/detail/{id}")
     public Result<Map<String, Object>> poetDetail(@PathVariable Long id) {
         return Result.ok(poetryService.poetDetail(id));
+    }
+
+    /* ---------------- 收藏与感悟 ---------------- */
+
+    /** 收藏切换。 */
+    @PostMapping("/poem/favorite/{id}")
+    public Result<Map<String, Object>> favorite(@PathVariable Long id) {
+        return Result.ok(poetryService.toggleFavorite(id));
+    }
+
+    @GetMapping("/poem/favorite/state/{id}")
+    public Result<Map<String, Object>> favoriteState(@PathVariable Long id) {
+        return Result.ok(poetryService.favoriteState(id));
+    }
+
+    /** 书斋：收藏的诗。 */
+    @GetMapping("/poem/favorite/list")
+    public Result<List<Map<String, Object>>> favoriteList() {
+        return Result.ok(poetryService.favoriteList());
+    }
+
+    @GetMapping("/poem/comment/list/{poemId}")
+    public Result<List<com.yuetin.music.entity.Comment>> poemComments(@PathVariable Long poemId) {
+        return Result.ok(poetryService.poemComments(poemId));
+    }
+
+    @PostMapping("/poem/comment/add")
+    public Result<com.yuetin.music.entity.Comment> addPoemComment(@RequestBody Map<String, Object> body) {
+        Long poemId = Long.valueOf(String.valueOf(body.get("poemId")));
+        String content = body.get("content") == null ? null : String.valueOf(body.get("content"));
+        return Result.ok(poetryService.addPoemComment(poemId, content));
+    }
+
+    /** 书斋：我的感悟。 */
+    @GetMapping("/poem/comment/mine")
+    public Result<List<com.yuetin.music.entity.Comment>> myComments() {
+        return Result.ok(poetryService.myComments());
+    }
+
+    @DeleteMapping("/poem/comment/delete/{id}")
+    public Result<Void> deleteComment(@PathVariable Long id) {
+        poetryService.deleteComment(id);
+        return Result.ok();
     }
 }

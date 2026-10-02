@@ -1,8 +1,12 @@
 package com.yuetin.music.service;
 
 import com.yuetin.music.common.BizException;
+import com.yuetin.music.common.UserContext;
+import com.yuetin.music.entity.Comment;
 import com.yuetin.music.entity.Poem;
 import com.yuetin.music.entity.Poet;
+import com.yuetin.music.mapper.CommentMapper;
+import com.yuetin.music.mapper.PoemFavoriteMapper;
 import com.yuetin.music.mapper.PoemMapper;
 import com.yuetin.music.mapper.PoetMapper;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +23,8 @@ public class PoetryService {
 
     private final PoemMapper poemMapper;
     private final PoetMapper poetMapper;
+    private final CommentMapper commentMapper;
+    private final PoemFavoriteMapper poemFavoriteMapper;
 
     /** 诗选：朝代/情绪/关键词自由组合。 */
     public List<Poem> listPoems(String dynasty, String mood, String keyword) {
@@ -75,6 +81,79 @@ public class PoetryService {
                 .distinct().sorted().toList());
         data.put("poemCount", poemMapper.countAll());
         return data;
+    }
+
+    /* ---------------- 收藏与感悟 ---------------- */
+
+    /** 收藏切换，返回切换后的状态。 */
+    public Map<String, Object> toggleFavorite(Long poemId) {
+        Long uid = requireLogin();
+        if (poemMapper.findById(poemId) == null) throw BizException.notFound("诗不存在");
+        boolean favorited;
+        if (poemFavoriteMapper.exists(uid, poemId)) {
+            poemFavoriteMapper.remove(uid, poemId);
+            favorited = false;
+        } else {
+            poemFavoriteMapper.add(uid, poemId);
+            favorited = true;
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("favorited", favorited);
+        return data;
+    }
+
+    /** 意境页查询当前用户是否已收藏；未登录返回 false。 */
+    public Map<String, Object> favoriteState(Long poemId) {
+        Long uid = UserContext.id();
+        Map<String, Object> data = new HashMap<>();
+        data.put("favorited", uid != null && poemFavoriteMapper.exists(uid, poemId));
+        return data;
+    }
+
+    /** 书斋：收藏的诗。 */
+    public List<Map<String, Object>> favoriteList() {
+        return poemFavoriteMapper.listByUser(requireLogin());
+    }
+
+    /** 诗的感悟列表（公开，匿名可读）。 */
+    public List<Comment> poemComments(Long poemId) {
+        return commentMapper.findByPoem(poemId);
+    }
+
+    public Comment addPoemComment(Long poemId, String content) {
+        Long uid = requireLogin();
+        if (content == null || content.trim().isEmpty()) {
+            throw BizException.badRequest("感悟内容不能为空");
+        }
+        if (content.length() > 500) throw BizException.badRequest("感悟最多 500 字");
+        if (poemMapper.findById(poemId) == null) throw BizException.notFound("诗不存在");
+
+        Comment c = new Comment();
+        c.setPoemId(poemId);
+        c.setUserId(uid);
+        c.setContent(content.trim());
+        commentMapper.insertPoem(c);
+        c.setUsername(UserContext.get() == null ? null : UserContext.get().getUsername());
+        return c;
+    }
+
+    /** 我的感悟（书斋）。 */
+    public List<Comment> myComments() {
+        return commentMapper.mine(requireLogin());
+    }
+
+    /** 删除自己的感悟。 */
+    public void deleteComment(Long id) {
+        Long uid = requireLogin();
+        if (commentMapper.deleteByIdAndUser(id, uid) == 0) {
+            throw BizException.forbidden("只能删除自己的感悟");
+        }
+    }
+
+    private Long requireLogin() {
+        Long uid = UserContext.id();
+        if (uid == null) throw BizException.unauthorized("登录已过期，请重新登录");
+        return uid;
     }
 
     private String blank(String s) {

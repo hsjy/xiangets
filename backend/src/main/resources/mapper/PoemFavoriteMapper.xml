@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.PoemFavoriteMapper">
+
+    <insert id="add">
+        INSERT IGNORE INTO poem_favorite (user_id, poem_id, create_time)
+        VALUES (#{userId}, #{poemId}, NOW())
+    </insert>
+
+    <delete id="remove">
+        DELETE FROM poem_favorite WHERE user_id = #{userId} AND poem_id = #{poemId}
+    </delete>
+
+    <select id="exists" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM poem_favorite WHERE user_id = #{userId} AND poem_id = #{poemId}
+    </select>
+
+    <select id="listByUser" resultType="map">
+        SELECT m.id AS poemId, m.title, m.subtitle, m.dynasty, m.mood, m.famous_line AS famousLine,
+               m.paragraphs, p.name AS poetName, f.create_time AS favoritedAt
+        FROM poem_favorite f
+        JOIN poem m ON m.id = f.poem_id
+        JOIN poet p ON p.id = m.poet_id
+        WHERE f.user_id = #{userId}
+        ORDER BY f.create_time DESC, f.id DESC
+    </select>
+</mapper>

@@ -17,6 +17,29 @@
         VALUES (#{songId}, #{userId}, #{content}, NOW())
     </insert>
 
+    <insert id="insertPoem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comment (poem_id, user_id, content, create_time)
+        VALUES (#{poemId}, #{userId}, #{content}, NOW())
+    </insert>
+
+    <select id="findByPoem" resultType="Comment">
+        SELECT c.id, c.song_id, c.poem_id, c.user_id, c.content, c.create_time,
+               u.name AS username, u.avatar AS avatar
+        FROM comment c
+        LEFT JOIN `user` u ON u.id = c.user_id
+        WHERE c.poem_id = #{poemId}
+        ORDER BY c.create_time DESC, c.id DESC
+    </select>
+
+    <select id="mine" resultType="Comment">
+        SELECT c.id, c.poem_id, c.content, c.create_time,
+               m.title AS poem_title
+        FROM comment c
+        JOIN poem m ON m.id = c.poem_id
+        WHERE c.user_id = #{userId}
+        ORDER BY c.create_time DESC, c.id DESC
+    </select>
+
     <delete id="deleteByIdAndUser">
         DELETE FROM comment WHERE id = #{id} AND user_id = #{userId}
     </delete>

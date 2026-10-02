@@ -71,3 +71,28 @@ export const commentApi = {
 export const statsApi = {
   overview: () => request.get('/stats/overview')
 }
+
+/* 诗与诗人（欣赏主体） */
+export const poetryApi = {
+  poemList: (params) => request.get('/poem/list', { params }),
+  poemDetail: (id) => request.get(`/poem/detail/${id}`),
+  today: () => request.get('/poem/today'),
+  facets: () => request.get('/poem/facets'),
+  poetList: (params) => request.get('/poet/list', { params }),
+  poetDetail: (id) => request.get(`/poet/detail/${id}`)
+}
+
+/* 收藏的诗（书斋） */
+export const poemFavApi = {
+  toggle: (id) => request.post(`/poem/favorite/${id}`),
+  state: (id) => request.get(`/poem/favorite/state/${id}`),
+  list: () => request.get('/poem/favorite/list')
+}
+
+/* 诗的感悟 */
+export const poemCommentApi = {
+  list: (poemId) => request.get(`/poem/comment/list/${poemId}`),
+  add: (poemId, content) => request.post('/poem/comment/add', { poemId, content }),
+  mine: () => request.get('/poem/comment/mine'),
+  remove: (id) => request.delete(`/poem/comment/delete/${id}`)
+}
