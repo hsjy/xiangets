@@ -132,6 +132,7 @@ public class AiMusicService {
         try {
             Path file = presetFile(poem.getId());
             String provider = job.getProvider();
+            Double aiDuration = null;
 
             if ("acestep".equals(provider) && acestepConfigured()) {
                 try {
@@ -139,10 +140,12 @@ public class AiMusicService {
                     file = Path.of(audioDir).resolve("generated").resolve("ai-poem-" + poem.getId() + ".mp3");
                     Files.createDirectories(file.getParent());
                     Files.write(file, audio);
+                    aiDuration = lastAiDuration;   // 边车响应头里的真实时长
                 } catch (Exception e) {
-                    log.warn("ACE-Step 生成失败，回落预生成曲: {}", e.getMessage());
+                    log.warn("AI 生成失败，回落预生成曲: {}", e.getMessage());
                     provider = "preset";
                     file = presetFile(poem.getId());
+                    aiDuration = null;             // 回落时重读预生成时长
                 }
             }
 
@@ -158,7 +161,8 @@ public class AiMusicService {
             track.setPoemId(poem.getId());
             track.setTrackKind("ai");
             track.setUrl("/api/audio/generated/" + file.getFileName());
-            track.setDuration(java.math.BigDecimal.valueOf(readDuration(poem.getId())));
+            double dur = aiDuration != null ? aiDuration : readDuration(poem.getId());
+            track.setDuration(java.math.BigDecimal.valueOf(dur));
             track.setStyle(poem.getMood());
             track.setPlayCount(0L);
             songMapper.insert(track);
@@ -215,6 +219,8 @@ public class AiMusicService {
      * 约定接口：POST {url} body {tags, lyrics, durationSec} → 返回 mp3 二进制；
      * 若你的部署返回 JSON（如 {audio: "<url>"}），在后续迭代中按实际返回适配。
      */
+    private Double lastAiDuration;
+
     private byte[] callAceStep(AiMusic job) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(acestepUrl))
@@ -229,6 +235,8 @@ public class AiMusicService {
         if (resp.statusCode() != 200) {
             throw new IOException("ACE-Step 返回 " + resp.statusCode());
         }
+        lastAiDuration = resp.headers().firstValue("X-Duration-Seconds")
+                .map(Double::parseDouble).orElse(null);
         return resp.body();
     }
 

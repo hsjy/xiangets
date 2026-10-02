@@ -3,11 +3,11 @@ import { useUserStore } from '../stores/user'
 
 // GitHub Pages 为纯静态托管，使用 hash 路由避免刷新 404
 const routes = [
-  { path: '/', redirect: '/today' },
+  { path: '/', name: 'home', component: () => import('../views/HomeView.vue'), meta: { title: '弦歌 · 诗乐雅集' } },
   { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { bare: true } },
 
   /* 诗为主体 */
-  { path: '/today', name: 'today', component: () => import('../views/TodayView.vue'), meta: { title: '今日一诗' } },
+  { path: '/today', redirect: '/' },
   { path: '/poems', name: 'poems', component: () => import('../views/PoemsView.vue'), meta: { title: '诗选' } },
   { path: '/poem/:id', name: 'poemDetail', component: () => import('../views/PoemDetailView.vue'), meta: { title: '意境' } },
   { path: '/poets', name: 'poets', component: () => import('../views/PoetsView.vue'), meta: { title: '诗人' } },

@@ -39,8 +39,10 @@
 
 **3. AI 谱曲任务流（古诗转音乐）。** 意境页「✦ 为此诗谱曲」：
 情绪→提示词映射（如"月夜"→ guzheng + xiao flute, slow, moonlit night），
-诗行原文作歌词，异步任务 + 轮询。提供商可插拔：配置 `AI_ACESTEP_URL` 即切换
-真实 ACE-Step 生成；无 GPU 时自动回落预生成曲，演示永不翻车。
+诗行原文参与提示词，异步任务 + 轮询。提供商可插拔：
+- `python3 tools/ai_server.py` 启动本地 **MusicGen** 推理边车（Apple Silicon
+  MPS 实测 30s 曲目约 40~60s 生成），后端配 `AI_ACESTEP_URL` 即接入真实生成；
+- 不配置或生成失败时自动回落预生成曲，演示永不翻车。
 
 **4. 现代化后端。** Spring Boot 3.3 / JDK 17，Flyway 版本化迁移（V1~V8），
 统一响应封装、全局异常、JWT（HS256）、SHA-256 加盐口令、外键级联设计。
@@ -77,6 +79,7 @@ music/
 │   ├── synth_bgm.py             古筝风配乐合成器（Karplus-Strong）
 │   ├── build_recite.py          edge-tts 朗诵批量生成
 │   ├── synth_poem_ai.py         每诗专属 AI 风格曲预生成
+│   ├── ai_server.py             MusicGen 推理边车（FastAPI + MPS）
 │   └── export_poetry_to_mock.py MySQL → mock 数据同步
 │
 ├── docs/                        古风改造方案 + 接口文档

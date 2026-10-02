@@ -26,6 +26,21 @@ const aiJob = ref(null)          // 谱曲任务：{id, status, audioUrl...}
 const polling = ref(false)
 
 const lines = computed(() => (poem.value?.paragraphs || '').split('\n').filter(Boolean))
+/**
+ * 竖排短列：按句读（，。？！；、）把诗行切成短句，每列一句。
+ * 词的长短句若整行一列，参差会显得凌乱；切成句读单元后
+ * 列与列之间等距、列内居中，呈现词牌固有的错落之美。
+ */
+const phrases = computed(() => {
+  const out = []
+  for (const line of lines.value) {
+    const parts = (line.match(/[^，。？！；、]+[，。？！；、]?/g) || [])
+      .map((x) => x.trim())
+      .filter(Boolean)
+    out.push(...parts)
+  }
+  return out
+})
 const fullTitle = computed(() => poem.value
   ? poem.value.title + (poem.value.subtitle ? '·' + poem.value.subtitle : '')
   : '')
@@ -167,7 +182,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
           <!-- 竖排诗行 -->
           <div class="scroll-pane">
             <div class="poem-vertical" data-test="poem-vertical">
-              <p v-for="(ln, i) in lines" :key="i" class="v-line">{{ ln }}</p>
+              <p v-for="(ln, i) in phrases" :key="i" class="v-line">{{ ln }}</p>
             </div>
             <p class="v-sign">{{ poem.poetName }}<span class="v-dyn">{{ poem.dynasty }}</span></p>
           </div>
@@ -206,7 +221,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
               </button>
             </div>
             <p class="compose-note" v-if="aiJob">
-              {{ aiJob.status === 'done' ? `已按「${poem.mood}」意象谱成 · ${aiJob.provider === 'acestep' ? 'ACE-Step 实时生成' : '本地预生成兜底'}` : aiJob.status === 'failed' ? aiJob.error : '正在依诗之意象谱曲…' }}
+              {{ aiJob.status === 'done' ? `已按「${poem.mood}」意象谱成 · ${aiJob.provider === 'acestep' ? 'AI 实时生成' : '本地预生成兜底'}` : aiJob.status === 'failed' ? aiJob.error : '正在依诗之意象谱曲…' }}
             </p>
           </div>
         </div>
@@ -312,16 +327,17 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
   writing-mode: vertical-rl;
   text-orientation: upright;
   display: flex;
-  flex-direction: column;
-  gap: 18px;
+  flex-direction: column;   /* vertical-rl 中 flex 主轴即纵向（inline 向） */
+  align-items: center;
+  gap: 16px;
   min-height: 300px;
-  max-height: 420px;
+  max-height: 460px;
 }
 .v-line {
   margin: 0;
-  font-size: 21px;
+  font-size: 20px;
   line-height: 1;
-  letter-spacing: 10px;
+  letter-spacing: 9px;
   color: var(--ink);
 }
 .v-sign {
@@ -438,7 +454,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
     text-orientation: mixed;
     max-height: none;
   }
-  .v-line { font-size: 17px; letter-spacing: 2px; line-height: 2.2; }
+  .v-line { font-size: 16px; letter-spacing: 2px; line-height: 2.2; }
   .v-sign { writing-mode: horizontal-tb; text-orientation: mixed; }
   .side-pane { max-width: none; }
 }
