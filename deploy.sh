@@ -30,6 +30,11 @@ if ! gh auth status >/dev/null 2>&1; then
   die "gh 未登录，请先执行：gh auth login"
 fi
 
+# 一次性取 token 并导出：后续 gh 子命令与 git push 都复用，
+# 规避 macOS keyring 间歇性读取失败（failed to get: -128）
+export GH_TOKEN="$(gh auth token)"
+[ -n "${GH_TOKEN}" ] || die "取不到 GitHub token，请重新 gh auth login"
+
 # ---- 1. 构建前端 ------------------------------------------------------------
 say "构建前端（${DIST}）"
 [ -d "$FRONTEND" ] || die "找不到前端目录：$FRONTEND"
@@ -82,11 +87,9 @@ git -c user.name="${GIT_NAME:-github-actions}" \
     commit -q -m "deploy: 更新静态站点 $(date '+%Y-%m-%d %H:%M:%S')"
 
 say "推送到 origin/$BRANCH"
-# 非交互环境下 keyring 凭据 helper 不稳定（failed to get: -128），改用 token 直推
+# 非交互环境下 keyring 凭据 helper 不稳定，改用脚本开头取好的 token 直推
 GIT_TERMINAL_PROMPT=0
-TOKEN="$(gh auth token)"
-[ -n "$TOKEN" ] || die "取不到 GitHub token，请先 gh auth login"
-PUSH_URL="https://x-access-token:${TOKEN}@github.com/$OWNER/$REPO.git"
+PUSH_URL="https://x-access-token:${GH_TOKEN}@github.com/$OWNER/$REPO.git"
 if git push -q --force "$PUSH_URL" "$BRANCH"; then
   ok "推送成功"
 else
