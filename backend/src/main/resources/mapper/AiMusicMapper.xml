@@ -36,6 +36,8 @@
     <update id="update">
         UPDATE ai_music
         <set>
+            <if test="prompt != null">prompt = #{prompt},</if>
+            <if test="lyrics != null">lyrics = #{lyrics},</if>
             <if test="status != null">status = #{status},</if>
             <if test="error != null">error = #{error},</if>
             <if test="trackId != null">track_id = #{trackId},</if>

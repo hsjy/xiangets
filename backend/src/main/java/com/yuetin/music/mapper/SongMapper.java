@@ -23,6 +23,9 @@ public interface SongMapper {
     /** 按给定顺序返回歌单内的歌曲（配合 playlist_song.sort_no）。 */
     List<Song> findByIdsInOrder(@Param("ids") List<Long> ids);
 
+    /** 某诗已有的 AI 曲数量（用于给新版本编号，如「其二」）。 */
+    int countAiByPoem(@Param("poemId") Long poemId);
+
     int insert(Song song);
 
     int update(Song song);

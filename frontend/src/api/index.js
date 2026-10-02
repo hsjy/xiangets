@@ -85,7 +85,7 @@ export const poetryApi = {
 
 /* AI 谱曲（古诗转音乐） */
 export const aiMusicApi = {
-  generate: (poemId) => request.post('/ai/music/generate', { poemId }),
+  generate: (poemId, force = false) => request.post('/ai/music/generate', { poemId, force }),
   job: (id) => request.get(`/ai/music/job/${id}`),
   list: (poemId) => request.get(`/ai/music/list/${poemId}`)
 }

@@ -20,11 +20,12 @@ public class AiMusicController {
 
     private final AiMusicService aiMusicService;
 
-    /** 发起谱曲：幂等——已有完成缓存直接返回。 */
+    /** 发起谱曲：幂等——已有完成缓存直接返回；force=true 时重新谱一版。 */
     @PostMapping("/ai/music/generate")
     public Result<AiMusic> generate(@RequestBody Map<String, Object> body) {
         Long poemId = Long.valueOf(String.valueOf(body.get("poemId")));
-        return Result.ok(aiMusicService.generate(poemId));
+        boolean force = Boolean.parseBoolean(String.valueOf(body.getOrDefault("force", false)));
+        return Result.ok(aiMusicService.generate(poemId, force));
     }
 
     /** 任务状态（前端轮询）。 */

@@ -90,8 +90,12 @@ function playTrack(t) {
 /** 为此诗谱曲：发起任务并轮询，完成后刷新音轨 */
 async function compose() {
   if (polling.value) return
+  // 请求发出前先上锁：后端要等 DeepSeek 读完诗才返回，这段时间里按钮必须已禁用，
+  // 否则连点会各建一个任务，一首诗被谱出两曲
+  polling.value = true
+  const again = aiJob.value?.status === 'done'
   try {
-    const { data: job } = await aiMusicApi.generate(poem.value.id)
+    const { data: job } = await aiMusicApi.generate(poem.value.id, again)
     aiJob.value = job
     if (job.status === 'done') {
       await refreshTracks()
@@ -102,7 +106,6 @@ async function compose() {
       toast.error('谱曲失败：' + (job.error || '未知原因'))
       return
     }
-    polling.value = true
     for (let i = 0; i < 100; i++) {
       await new Promise((r) => setTimeout(r, 1500))
       const { data: j } = await aiMusicApi.job(job.id)

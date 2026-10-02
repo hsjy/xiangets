@@ -102,43 +102,58 @@ public class AiMusicService {
 
     /* ---------------- 任务编排 ---------------- */
 
-    /** 发起谱曲：有完成的缓存直接返回；进行中的返回原任务；否则新建任务。 */
-    public AiMusic generate(Long poemId) {
+    /** 发起谱曲：有完成的缓存直接返回；进行中的返回原任务；force=true 时无视缓存重新谱。 */
+    public AiMusic generate(Long poemId, boolean force) {
         Poem poem = poemMapper.findById(poemId);
         if (poem == null) throw BizException.notFound("诗不存在");
 
-        AiMusic latest = aiMusicMapper.latestByPoem(poemId);
-        if (latest != null && ("done".equals(latest.getStatus()) || "pending".equals(latest.getStatus())
-                || "running".equals(latest.getStatus()))) {
-            return view(latest);
+        Claim claim = claimSlot(poem, force);
+        if (!claim.fresh()) {
+            return view(claim.job());
         }
+        AiMusic job = claim.job();
 
-        Map<String, String> prompt = buildPrompt(poem);
-        String tags = prompt.get("tags");
-        String llmRationale = null;
-
-        // DeepSeek 读诗：真正理解意境后再写作曲提示词；失败降级为规则标签
+        // 读诗在锁外做：DeepSeek 要十几秒，锁住会挡住其它诗的谱曲请求
         if (deepSeekPoet.configured()) {
             try {
                 Result r = deepSeekPoet.read(poem);
-                tags = r.prompt();
-                llmRationale = r.rationale();
+                job.setPrompt(r.prompt());
+                job.setLyrics("LLM 立意：" + r.rationale());
+                aiMusicMapper.update(job);
                 log.info("DeepSeek 读诗谱曲: poem={} rationale={}", poem.getId(), r.rationale());
             } catch (Exception e) {
                 log.warn("DeepSeek 读诗失败，降级为规则标签: {}", e.getMessage());
             }
         }
 
-        AiMusic job = new AiMusic();
-        job.setPoemId(poemId);
-        job.setProvider(acestepConfigured() ? "acestep" : "preset");
-        job.setPrompt(tags);
-        job.setLyrics(llmRationale != null ? "LLM 立意：" + llmRationale : prompt.get("lyrics"));
-        job.setStatus("pending");
-        aiMusicMapper.insert(job);
-
         executor.submit(() -> process(job.getId(), poem));
         return view(aiMusicMapper.findById(job.getId()));
+    }
+
+    /** 占位结果：job 为本次可用任务，fresh 表示是否由本次请求新建。 */
+    private record Claim(AiMusic job, boolean fresh) {}
+
+    /**
+     * 抢占建单（唯一的临界区）：已有可用任务就直接复用，否则立刻插入 pending 占位行。
+     * 必须先落库再读诗——DeepSeek 读诗要十几秒，若读完才建单，这段时间里到达的
+     * 重复请求查不到任何任务，会各自建单，一首诗被谱出两曲。
+     */
+    private synchronized Claim claimSlot(Poem poem, boolean force) {
+        AiMusic latest = aiMusicMapper.latestByPoem(poem.getId());
+        if (!force && latest != null && ("done".equals(latest.getStatus())
+                || "pending".equals(latest.getStatus()) || "running".equals(latest.getStatus()))) {
+            return new Claim(latest, false);
+        }
+
+        Map<String, String> prompt = buildPrompt(poem);
+        AiMusic job = new AiMusic();
+        job.setPoemId(poem.getId());
+        job.setProvider(acestepConfigured() ? "acestep" : "preset");
+        job.setPrompt(prompt.get("tags"));
+        job.setLyrics(prompt.get("lyrics"));
+        job.setStatus("pending");
+        aiMusicMapper.insert(job);
+        return new Claim(job, true);
     }
 
     /** 任务执行：preset 即时完成；acestep 走 HTTP，失败回落 preset。 */
@@ -156,7 +171,9 @@ public class AiMusicService {
             if ("acestep".equals(provider) && acestepConfigured()) {
                 try {
                     byte[] audio = callAceStep(job);
-                    file = Path.of(audioDir).resolve("generated").resolve("ai-poem-" + poem.getId() + ".mp3");
+                    // 文件名带任务 id：重新谱曲时保留旧版本，否则会覆盖上一次的音轨
+                    file = Path.of(audioDir).resolve("generated")
+                            .resolve("ai-poem-" + poem.getId() + "-" + jobId + ".mp3");
                     Files.createDirectories(file.getParent());
                     Files.write(file, audio);
                     aiDuration = lastAiDuration;   // 边车响应头里的真实时长
@@ -175,7 +192,8 @@ public class AiMusicService {
             Song track = new Song();
             track.setName("《" + poem.getTitle()
                     + (poem.getSubtitle() != null && !poem.getSubtitle().isEmpty()
-                       ? "·" + poem.getSubtitle() : "") + "》AI 谱曲");
+                       ? "·" + poem.getSubtitle() : "") + "》AI 谱曲"
+                    + versionSuffix(poem.getId()));
             track.setSingerId(3L); // 松涛（合成·古筝）
             track.setPoemId(poem.getId());
             track.setTrackKind("ai");
@@ -231,6 +249,14 @@ public class AiMusicService {
 
     private Path presetFile(Long poemId) {
         return Path.of(audioDir).resolve("generated").resolve("ai-poem-" + poemId + ".mp3");
+    }
+
+    /** 重新谱曲时给新版本编号，避免同名音轨分不清：第二版起为「·其二」。 */
+    private String versionSuffix(Long poemId) {
+        int n = songMapper.countAiByPoem(poemId);
+        if (n <= 0) return "";
+        String[] cn = {"一", "二", "三", "四", "五", "六", "七", "八", "九", "十"};
+        return n <= cn.length ? "·其" + cn[n] : "·第" + (n + 1) + "版";
     }
 
     /**

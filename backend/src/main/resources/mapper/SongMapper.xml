@@ -66,6 +66,10 @@
         <foreach collection="ids" item="id" separator=",">#{id}</foreach>)
     </select>
 
+    <select id="countAiByPoem" resultType="int">
+        SELECT COUNT(*) FROM song WHERE poem_id = #{poemId} AND track_kind = 'ai'
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO song (name, singer_id, poem_id, track_kind, cover, url, duration, style, play_count, create_time)
         VALUES (#{name}, #{singerId}, #{poemId}, #{trackKind}, #{cover}, #{url}, #{duration}, #{style}, #{playCount}, NOW())
