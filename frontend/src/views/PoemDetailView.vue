@@ -221,7 +221,10 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
               </button>
             </div>
             <p class="compose-note" v-if="aiJob">
-              {{ aiJob.status === 'done' ? `已按「${poem.mood}」意象谱成 · ${aiJob.provider === 'acestep' ? 'AI 实时生成' : '本地预生成兜底'}` : aiJob.status === 'failed' ? aiJob.error : '正在依诗之意象谱曲…' }}
+              {{ aiJob.status === 'done' ? `已按「${poem.mood}」谱成 · ${aiJob.provider === 'acestep' ? 'AI 读诗实时生成' : '本地预生成兜底'}` : aiJob.status === 'failed' ? aiJob.error : 'AI 正在读诗…' }}
+            </p>
+            <p class="compose-prompt" v-if="aiJob?.status === 'done'" :title="aiJob.prompt">
+              ✧ {{ aiJob.prompt }}
             </p>
           </div>
         </div>
@@ -399,6 +402,17 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .compose:hover:not(:disabled) { filter: brightness(1.1); }
 .compose:disabled { opacity: 0.7; }
 .compose-note { margin: -6px 0 0; font-size: 12px; color: var(--text-3); }
+.compose-prompt {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-3);
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .fav { border: 1px solid var(--border-strong); background: var(--card); color: var(--text-2); }
 .fav:hover { border-color: var(--seal); color: var(--seal); }
 .fav.on { background: var(--seal); border-color: var(--seal); color: #fbf6ea; }

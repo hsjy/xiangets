@@ -47,6 +47,8 @@ class GenReq(BaseModel):
     tags: str = "chinese traditional, guzheng, peaceful"
     lyrics: str = ""
     durationSec: int = 30
+    # LLM 读诗后写好的完整英文提示词；非空时直接使用，跳过意象字典拼装
+    prompt: str = ""
 
 
 def clean_prompt(tags: str, lyrics: str) -> str:
@@ -81,10 +83,10 @@ def generate(req: GenReq):
     # MusicGen 每秒约 50 token，封顶 30s（MPS 上更久不划算）
     dur = max(10, min(int(req.durationSec or 30), 30))
     max_tokens = int(dur * 50.2)
-    prompt = clean_prompt(req.tags, req.lyrics)
-    print(f"[generate] prompt={prompt!r} tokens={max_tokens}", flush=True)
+    final_prompt = req.prompt.strip() or clean_prompt(req.tags, req.lyrics)
+    print(f"[generate] prompt={final_prompt!r} tokens={max_tokens}", flush=True)
 
-    inputs = proc(text=[prompt], padding=True, return_tensors="pt").to("mps")
+    inputs = proc(text=[final_prompt], padding=True, return_tensors="pt").to("mps")
     with torch.no_grad():
         audio = model.generate(**inputs, do_sample=True, guidance_scale=3.0, max_new_tokens=max_tokens)
     sr = model.config.audio_encoder.sampling_rate

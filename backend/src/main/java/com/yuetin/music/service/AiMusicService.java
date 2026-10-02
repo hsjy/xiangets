@@ -7,6 +7,7 @@ import com.yuetin.music.entity.Song;
 import com.yuetin.music.mapper.AiMusicMapper;
 import com.yuetin.music.mapper.PoemMapper;
 import com.yuetin.music.mapper.SongMapper;
+import com.yuetin.music.service.DeepSeekPoet.Result;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +44,7 @@ public class AiMusicService {
     private final PoemMapper poemMapper;
     private final SongMapper songMapper;
     private final AiMusicMapper aiMusicMapper;
+    private final DeepSeekPoet deepSeekPoet;
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ai-music");
         t.setDaemon(true);
@@ -62,10 +64,12 @@ public class AiMusicService {
     @Value("classpath:ai-durations.properties")
     private org.springframework.core.io.Resource durationsResource;
 
-    public AiMusicService(PoemMapper poemMapper, SongMapper songMapper, AiMusicMapper aiMusicMapper) {
+    public AiMusicService(PoemMapper poemMapper, SongMapper songMapper,
+                          AiMusicMapper aiMusicMapper, DeepSeekPoet deepSeekPoet) {
         this.poemMapper = poemMapper;
         this.songMapper = songMapper;
         this.aiMusicMapper = aiMusicMapper;
+        this.deepSeekPoet = deepSeekPoet;
     }
 
     /* ---------------- 意象 → 提示词 ---------------- */
@@ -110,11 +114,26 @@ public class AiMusicService {
         }
 
         Map<String, String> prompt = buildPrompt(poem);
+        String tags = prompt.get("tags");
+        String llmRationale = null;
+
+        // DeepSeek 读诗：真正理解意境后再写作曲提示词；失败降级为规则标签
+        if (deepSeekPoet.configured()) {
+            try {
+                Result r = deepSeekPoet.read(poem);
+                tags = r.prompt();
+                llmRationale = r.rationale();
+                log.info("DeepSeek 读诗谱曲: poem={} rationale={}", poem.getId(), r.rationale());
+            } catch (Exception e) {
+                log.warn("DeepSeek 读诗失败，降级为规则标签: {}", e.getMessage());
+            }
+        }
+
         AiMusic job = new AiMusic();
         job.setPoemId(poemId);
         job.setProvider(acestepConfigured() ? "acestep" : "preset");
-        job.setPrompt(prompt.get("tags"));
-        job.setLyrics(prompt.get("lyrics"));
+        job.setPrompt(tags);
+        job.setLyrics(llmRationale != null ? "LLM 立意：" + llmRationale : prompt.get("lyrics"));
         job.setStatus("pending");
         aiMusicMapper.insert(job);
 
@@ -228,7 +247,7 @@ public class AiMusicService {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(
                         "{\"tags\":\"" + escapeJson(job.getPrompt())
-                        + "\",\"lyrics\":\"" + escapeJson(job.getLyrics())
+                        + "\",\"lyrics\":\"\",\"prompt\":\"" + escapeJson(job.getPrompt())
                         + "\",\"durationSec\":60}"))
                 .build();
         HttpResponse<byte[]> resp = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
