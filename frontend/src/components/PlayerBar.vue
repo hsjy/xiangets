@@ -46,6 +46,11 @@ function onEnded() {
 }
 function onPlay() { player.playing = true }
 function onPause() { player.playing = false }
+function onError() {
+  if (!player.current) return
+  toast.error('音频加载失败——诗之音轨需连接后端（real 模式）体验')
+  player.playing = false
+}
 
 async function toggleLike() {
   if (!player.current) return
@@ -87,6 +92,7 @@ watch(() => player.currentId, async (id) => {
       @ended="onEnded"
       @play="onPlay"
       @pause="onPause"
+      @error="onError"
     />
 
     <!-- 左：当前歌曲 -->
@@ -96,12 +102,14 @@ watch(() => player.currentId, async (id) => {
           <Icon name="music" :size="20" />
         </router-link>
         <div class="meta">
-          <router-link :to="`/song/${player.current.id}`" class="name" data-test="player-song-name">
+          <router-link
+            v-if="player.current.poemId" :to="`/poem/${player.current.poemId}`"
+            class="name" data-test="player-song-name"
+          >
             {{ player.current.name }}
           </router-link>
-          <router-link :to="`/singer/${player.current.singerId}`" class="singer">
-            {{ player.current.singerName }}
-          </router-link>
+          <span v-else class="name" data-test="player-song-name">{{ player.current.name }}</span>
+          <span class="singer">{{ player.current.singerName }}</span>
         </div>
         <button class="ctl like" :class="{ active: liked }" :title="liked ? '取消喜欢' : '喜欢'" @click="toggleLike">
           <Icon name="heart" :size="17" />

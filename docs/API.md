@@ -154,3 +154,50 @@ token 由 `HS256` 签发，有效期 7 天。
 
 密码以 `SHA-256(明文 + 固定盐)` 存储，响应中永不出现 `password` 字段
 （实体上用 `@JsonProperty(access = WRITE_ONLY)` 保证）。
+
+---
+
+## 8. 诗与诗人 `/poem` `/poet`（欣赏主体）
+
+| 方法 | 路径 | 权限 | 说明 |
+| --- | --- | --- | --- |
+| GET | `/poem/list?dynasty=&mood=&keyword=` | 公开 | 诗选；朝代/情绪/关键词（题名/诗人/诗行）组合筛选 |
+| GET | `/poem/detail/{id}` | 公开 | 诗详情（含注/译/赏） |
+| GET | `/poem/today` | 公开 | 今日一诗，按年内天数确定性轮换 |
+| GET | `/poem/facets` | 公开 | 筛选项：朝代/情绪/总量 |
+| POST | `/poem/favorite/{id}` | 登录 | 收藏切换 → `{ favorited }` |
+| GET | `/poem/favorite/state/{id}` | 公开 | 收藏状态（匿名 false） |
+| GET | `/poem/favorite/list` | 登录 | 书斋：收藏的诗 |
+| GET | `/poet/list?dynasty=` | 公开 | 诗人名录（含存诗数，不含故事长文） |
+| GET | `/poet/detail/{id}` | 公开 | 诗人页：生平 + 故事 + 存诗 |
+
+## 9. 诗的感悟 `/poem/comment`
+
+| 方法 | 路径 | 权限 | 说明 |
+| --- | --- | --- | --- |
+| GET | `/poem/comment/list/{poemId}` | 公开 | 感悟列表，倒序 |
+| POST | `/poem/comment/add` | 登录 | 体：`{ poemId, content }`，≤500 字 |
+| GET | `/poem/comment/mine` | 登录 | 我的感悟（带诗题） |
+| DELETE | `/poem/comment/delete/{id}` | 本人 | 只能删自己的感悟 |
+
+## 10. 音轨（诗之乐）`/song`
+
+原歌曲接口全部保留，`song` 表新增：
+
+| 字段 | 说明 |
+| --- | --- |
+| `poem_id` | 挂载的诗；NULL=纯氛围曲目 |
+| `track_kind` | `recitation` 朗诵配乐 / `bgm` 古筝铺底 / `ai` AI 谱曲 |
+
+音频文件由 SpringBoot 静态服务 `/api/audio/**` 提供（目录 `yuetin.audio-dir`）。
+
+## 11. AI 谱曲（古诗转音乐）`/ai/music`
+
+| 方法 | 路径 | 权限 | 说明 |
+| --- | --- | --- | --- |
+| POST | `/ai/music/generate` | 公开 | 体：`{ poemId }`。幂等：已有完成缓存直接返回 |
+| GET | `/ai/music/job/{id}` | 公开 | 任务状态：`pending/running/done/failed` |
+| GET | `/ai/music/list/{poemId}` | 公开 | 某诗已完成的 AI 曲 |
+
+- 意象→提示词：12 种情绪映射为 ACE-Step 风格 tags，诗行原文作 lyrics
+- 提供商：配置 `AI_ACESTEP_URL` 走真实生成；否则/失败时回落预生成曲（`provider: preset`）
