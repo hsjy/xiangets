@@ -42,6 +42,12 @@ request.interceptors.response.use(
 if (useMock) {
   request.defaults.adapter = async (config) => {
     const url = new URL(config.url, 'http://mock.local')
+    // axios 不会为自定义 adapter 序列化 params，这里手动拼进 query
+    if (config.params) {
+      for (const [k, v] of Object.entries(config.params)) {
+        if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v)
+      }
+    }
     const path = url.pathname.replace(/^\/+api/, '')
     const query = Object.fromEntries(url.searchParams.entries())
 

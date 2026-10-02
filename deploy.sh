@@ -82,13 +82,15 @@ git -c user.name="${GIT_NAME:-github-actions}" \
     commit -q -m "deploy: 更新静态站点 $(date '+%Y-%m-%d %H:%M:%S')"
 
 say "推送到 origin/$BRANCH"
-if git push -q "https://github.com/$OWNER/$REPO.git" "$BRANCH" 2>/dev/null; then
+# 非交互环境下 keyring 凭据 helper 不稳定（failed to get: -128），改用 token 直推
+GIT_TERMINAL_PROMPT=0
+TOKEN="$(gh auth token)"
+[ -n "$TOKEN" ] || die "取不到 GitHub token，请先 gh auth login"
+PUSH_URL="https://x-access-token:${TOKEN}@github.com/$OWNER/$REPO.git"
+if git push -q --force "$PUSH_URL" "$BRANCH"; then
   ok "推送成功"
 else
-  # 首次推送可能被 GitHub 拒绝（空仓库 / 保护规则），改用 gh 携带的凭据重试
-  git remote add origin "https://github.com/$OWNER/$REPO.git" 2>/dev/null || true
-  git push -q --force origin "$BRANCH" || die "推送失败，请检查仓库权限"
-  ok "推送成功（force）"
+  die "推送失败，请检查仓库权限"
 fi
 
 # ---- 5. 开启 Pages ----------------------------------------------------------
