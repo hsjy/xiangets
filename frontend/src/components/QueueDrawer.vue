@@ -64,8 +64,9 @@ async function onClear() {
 .drawer {
   position: absolute;
   right: 0;
-  bottom: var(--player-h);
+  bottom: 0;
   top: 0;
+  border-radius: 0;
   width: min(380px, 92vw);
   background: var(--panel);
   border-left: 1px solid var(--border);

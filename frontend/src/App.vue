@@ -6,8 +6,10 @@ import PlayerBar from './components/PlayerBar.vue'
 import QueueDrawer from './components/QueueDrawer.vue'
 import ToastHost from './components/ToastHost.vue'
 import ConfirmHost from './components/ConfirmHost.vue'
+import { usePlayerStore } from './stores/player'
 
 const route = useRoute()
+const player = usePlayerStore()
 // 登录/注册页使用极简布局（无导航与播放器）
 const isBare = computed(() => route.meta.bare === true)
 // 首页是全幅沉浸式长卷，不用内页容器
@@ -18,7 +20,7 @@ const isHome = computed(() => route.path === '/')
   <router-view v-if="isBare" />
   <div v-else class="app-shell">
     <TopNav />
-    <main class="content" :class="{ full: isHome }">
+    <main class="content" :class="{ full: isHome, 'with-player': player.hasTrack }">
       <router-view />
     </main>
     <PlayerBar />
@@ -34,13 +36,19 @@ const isHome = computed(() => route.path === '/')
   min-height: 100vh;
 }
 .content {
-  padding: 92px 28px 120px; /* 顶部给固定导航留出空间，底部给播放器 */
+  padding: 92px 28px 44px; /* 顶部给固定导航留出空间 */
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
 }
+.content.with-player {
+  padding-bottom: 118px; /* 浮动播放器出现时预留空间 */
+}
 .content.full {
   max-width: none;
-  padding: 0 0 120px;
+  padding: 0 0 44px;
+}
+.content.full.with-player {
+  padding-bottom: 112px;
 }
 </style>
