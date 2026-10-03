@@ -2,11 +2,11 @@ import { defineStore } from 'pinia'
 import { songApi } from '../api'
 
 const VOL_KEY = 'yuetin_volume'
-const MODE_KEY = 'yuetin_playmode'
 
 /**
  * 全局播放器状态：单一 <audio> 实例 + 队列管理。
- * 播放模式：order 列表循环 / random 随机 / single 单曲循环
+ * 播放策略：曲目自然播完即停（不循环、不自动切下一首），
+ * 上一首/下一首仅由用户手动触发。
  */
 export const usePlayerStore = defineStore('player', {
   state: () => ({
@@ -19,9 +19,7 @@ export const usePlayerStore = defineStore('player', {
     buffered: 0,
     volume: Number(localStorage.getItem(VOL_KEY) ?? 0.8),
     muted: false,
-    mode: localStorage.getItem(MODE_KEY) || 'order', // order | random | single
-    queueVisible: false,
-    _randHistory: []        // 随机模式回溯用
+    queueVisible: false
   }),
   getters: {
     current: (s) => s.queue.find((x) => x.id === s.currentId) || null,
@@ -50,7 +48,6 @@ export const usePlayerStore = defineStore('player', {
         const sig = context.map((s) => s.id).join(',')
         if (sig !== this.queue.map((s) => s.id).join(',')) {
           this.queue = context.slice()
-          this._randHistory = []
         }
       } else if (!this.queue.some((s) => s.id === song.id)) {
         this.queue.push(song)
@@ -85,8 +82,15 @@ export const usePlayerStore = defineStore('player', {
       this.audio?.pause()
     },
     async resume() {
+      const el = this.audio
+      if (!el) return
+      // 播完后再次点播放：从头开始，而不是从结尾的 0 秒「假播放」
+      if (el.ended || (this.duration && el.currentTime >= this.duration - 0.05)) {
+        el.currentTime = 0
+        this.currentTime = 0
+      }
       try {
-        await this.audio?.play()
+        await el.play()
       } catch { /* ignore */ }
     },
     async toggle() {
@@ -94,53 +98,31 @@ export const usePlayerStore = defineStore('player', {
       if (this.audio.paused) await this.resume()
       else this.pause()
     },
-    /** 上一曲/下一曲：按当前播放模式决定 */
-    async next(auto = false) {
+    /** 曲目自然播完：一遍即停，不循环也不自动切下一首 */
+    handleEnded() {
+      this.playing = false
+      if (this.audio) this.audio.currentTime = 0
+      this.currentTime = 0
+    },
+    /** 下一曲（仅手动触发）；队列只有一首时重播该曲 */
+    async next() {
       if (!this.queue.length) return
-      if (this.mode === 'single' && auto) {
-        this.currentTime = 0
-        await this._loadAndPlay()
-        return
-      }
-      if (this.mode === 'random') {
-        this._pickRandom()
-      } else {
-        const i = this.currentIndex
-        const n = (i + 1) % this.queue.length // 列表循环
-        this.currentId = this.queue[n].id
-      }
+      const n = (this.currentIndex + 1) % this.queue.length
+      this.currentId = this.queue[n].id
       this.currentTime = 0
       await this._loadAndPlay()
       if (this.current) songApi.play(this.current.id).catch(() => {})
       this._updateMediaSession(this.current)
     },
+    /** 上一曲（仅手动触发） */
     async prev() {
       if (!this.queue.length) return
-      if (this.mode === 'random' && this._randHistory.length > 1) {
-        this._randHistory.pop()
-        this.currentId = this._randHistory[this._randHistory.length - 1]
-      } else {
-        const i = this.currentIndex
-        const p = (i - 1 + this.queue.length) % this.queue.length
-        this.currentId = this.queue[p].id
-      }
+      const p = (this.currentIndex - 1 + this.queue.length) % this.queue.length
+      this.currentId = this.queue[p].id
       this.currentTime = 0
       await this._loadAndPlay()
       if (this.current) songApi.play(this.current.id).catch(() => {})
       this._updateMediaSession(this.current)
-    },
-    _pickRandom() {
-      if (this.queue.length === 1) {
-        this.currentId = this.queue[0].id
-        return
-      }
-      let id
-      do {
-        id = this.queue[Math.floor(Math.random() * this.queue.length)].id
-      } while (id === this.currentId)
-      this._randHistory.push(id)
-      if (this._randHistory.length > 30) this._randHistory.shift()
-      this.currentId = id
     },
     seek(sec) {
       if (!this.audio) return
@@ -161,11 +143,6 @@ export const usePlayerStore = defineStore('player', {
     toggleMute() {
       this.muted = !this.muted
       if (this.audio) this.audio.muted = this.muted
-    },
-    cycleMode() {
-      const order = ['order', 'random', 'single']
-      this.mode = order[(order.indexOf(this.mode) + 1) % order.length]
-      localStorage.setItem(MODE_KEY, this.mode)
     },
     addToQueue(song) {
       if (!this.queue.some((s) => s.id === song.id)) {

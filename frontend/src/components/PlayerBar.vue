@@ -57,12 +57,6 @@ onMounted(() => {
   player.attach(audioRef.value)
 })
 
-const modeInfo = computed(() => ({
-  order: { icon: 'repeat', label: '列表循环' },
-  random: { icon: 'shuffle', label: '随机播放' },
-  single: { icon: 'repeat-1', label: '单曲循环' }
-}[player.mode]))
-
 const progressFill = computed(() =>
   player.duration ? (player.currentTime / player.duration) * 100 : 0
 )
@@ -82,7 +76,7 @@ function onMeta() {
   player.duration = audioRef.value.duration || 0
 }
 function onEnded() {
-  player.next(true) // 按播放模式自动切下一曲
+  player.handleEnded() // 播一遍即停：不循环、不自动切下一曲
 }
 function onPlay() { player.playing = true }
 function onPause() { player.playing = false }
@@ -194,11 +188,8 @@ watch(() => player.currentId, async (id) => {
       </div>
     </div>
 
-    <!-- 右：模式 / 音量 / 队列 -->
+    <!-- 右：音量 / 队列 -->
     <div class="right">
-      <button class="ctl slim" :title="modeInfo.label" data-test="mode" @click="player.cycleMode()">
-        <Icon :name="modeInfo.icon" :size="16" />
-      </button>
       <div class="vol">
         <button class="ctl slim" title="静音" data-test="mute" @click="player.toggleMute()">
           <Icon :name="player.muted || player.volume === 0 ? 'volume-x' : 'volume-2'" :size="16" />
