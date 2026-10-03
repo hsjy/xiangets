@@ -5,7 +5,7 @@
 
     <sql id="cols">
         p.id, p.name, p.zi, p.hao, p.dynasty, p.years, p.title, p.intro,
-        p.story, p.story_title, p.journey, p.create_time
+        p.story, p.story_title, p.tier, p.journey, p.create_time
     </sql>
 
     <!-- 列表带存诗数；故事长文不随列表下发，详情页单独取 -->
@@ -36,4 +36,35 @@
         INSERT INTO poet (name, zi, hao, dynasty, years, title, intro, story, story_title, create_time)
         VALUES (#{name}, #{zi}, #{hao}, #{dynasty}, #{years}, #{title}, #{intro}, #{story}, #{storyTitle}, NOW())
     </insert>
+
+    <!-- 诗人分页：朝代/关键词（姓名、字、号、称号） -->
+    <sql id="pageWhere">
+        <where>
+            <if test="dynasty != null and dynasty != ''">AND p.dynasty = #{dynasty}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (p.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR p.zi LIKE CONCAT('%', #{keyword}, '%')
+                     OR p.hao LIKE CONCAT('%', #{keyword}, '%')
+                     OR p.title LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="pageList" resultType="Poet">
+        SELECT <include refid="cols"/>,
+               (SELECT COUNT(*) FROM poem m WHERE m.poet_id = p.id) AS poem_count
+        FROM poet p
+        <include refid="pageWhere"/>
+        ORDER BY p.id ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countList" resultType="long">
+        SELECT COUNT(*) FROM poet p
+        <include refid="pageWhere"/>
+    </select>
+
+    <select id="distinctDynasties" resultType="string">
+        SELECT DISTINCT dynasty FROM poet ORDER BY dynasty
+    </select>
 </mapper>

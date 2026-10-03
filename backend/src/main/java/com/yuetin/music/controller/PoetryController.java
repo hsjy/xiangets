@@ -61,6 +61,26 @@ public class PoetryController {
     }
 
     /** 诗人页：生平故事 + 存诗。 */
+    /** 诗选分页：语料库全量浏览；tier=1 只看精选。 */
+    @GetMapping("/poem/page")
+    public Result<Map<String, Object>> pagePoems(@RequestParam(required = false) String dynasty,
+                                                 @RequestParam(required = false) String mood,
+                                                 @RequestParam(required = false) String keyword,
+                                                 @RequestParam(required = false) Integer tier,
+                                                 @RequestParam(defaultValue = "1") Integer page,
+                                                 @RequestParam(defaultValue = "48") Integer size) {
+        return Result.ok(poetryService.pagePoems(dynasty, mood, keyword, page, size, tier));
+    }
+
+    /** 诗人分页：语料库全量浏览。 */
+    @GetMapping("/poet/page")
+    public Result<Map<String, Object>> pagePoets(@RequestParam(required = false) String dynasty,
+                                                 @RequestParam(required = false) String keyword,
+                                                 @RequestParam(defaultValue = "1") Integer page,
+                                                 @RequestParam(defaultValue = "48") Integer size) {
+        return Result.ok(poetryService.pagePoets(dynasty, keyword, page, size));
+    }
+
     @GetMapping("/poet/detail/{id}")
     public Result<Map<String, Object>> poetDetail(@PathVariable Long id) {
         return Result.ok(poetryService.poetDetail(id));

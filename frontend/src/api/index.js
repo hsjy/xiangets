@@ -75,11 +75,13 @@ export const statsApi = {
 /* 诗与诗人（欣赏主体） */
 export const poetryApi = {
   poemList: (params) => request.get('/poem/list', { params }),
+  poemPage: (params) => request.get('/poem/page', { params }),
   poemDetail: (id) => request.get(`/poem/detail/${id}`),
   random: () => request.get('/poem/random'),
   today: () => request.get('/poem/today'),
   facets: () => request.get('/poem/facets'),
   poetList: (params) => request.get('/poet/list', { params }),
+  poetPage: (params) => request.get('/poet/page', { params }),
   poetDetail: (id) => request.get(`/poet/detail/${id}`)
 }
 

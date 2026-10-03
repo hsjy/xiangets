@@ -31,6 +31,38 @@ public class PoetryService {
         return poemMapper.search(blank(dynasty), blank(mood), blank(keyword));
     }
 
+    /** 诗选分页（语料库全量浏览用）；tier 为空表示全部层级。 */
+    public Map<String, Object> pagePoems(String dynasty, String mood, String keyword,
+                                         Integer page, Integer size, Integer tier) {
+        int p = Math.max(1, page == null ? 1 : page);
+        int s = Math.min(100, Math.max(1, size == null ? 48 : size));
+        long total = poemMapper.countSearch(blank(dynasty), blank(mood), blank(keyword), tier);
+        List<Poem> list = total == 0 ? List.of()
+                : poemMapper.pageSearch(blank(dynasty), blank(mood), blank(keyword), tier,
+                        (long) (p - 1) * s, s);
+        Map<String, Object> data = new HashMap<>();
+        data.put("list", list);
+        data.put("total", total);
+        data.put("page", p);
+        data.put("size", s);
+        return data;
+    }
+
+    /** 诗人分页（语料库全量浏览用）。 */
+    public Map<String, Object> pagePoets(String dynasty, String keyword, Integer page, Integer size) {
+        int p = Math.max(1, page == null ? 1 : page);
+        int s = Math.min(100, Math.max(1, size == null ? 48 : size));
+        long total = poetMapper.countList(blank(dynasty), blank(keyword));
+        List<Poet> list = total == 0 ? List.of()
+                : poetMapper.pageList(blank(dynasty), blank(keyword), (long) (p - 1) * s, s);
+        Map<String, Object> data = new HashMap<>();
+        data.put("list", list);
+        data.put("total", total);
+        data.put("page", p);
+        data.put("size", s);
+        return data;
+    }
+
     public Poem poemDetail(Long id) {
         Poem poem = poemMapper.findById(id);
         if (poem == null) throw BizException.notFound("诗不存在");
@@ -42,23 +74,23 @@ public class PoetryService {
      */
     /** 随机一诗：每次调用都可能不同（首页「此刻」卷首用）。 */
     public Poem randomPoem() {
-        long count = poemMapper.countAll();
+        long count = poemMapper.countCurated();
         if (count == 0) throw BizException.notFound("诗库为空");
         int offset = java.util.concurrent.ThreadLocalRandom.current().nextInt((int) count);
-        Poem poem = poemMapper.findByOffset(offset);
+        Poem poem = poemMapper.findByOffsetCurated(offset);
         if (poem == null) throw BizException.notFound("诗不存在");
         return poem;
     }
 
     public Map<String, Object> todayPoem() {
-        long count = poemMapper.countAll();
+        long count = poemMapper.countCurated();
         Map<String, Object> data = new HashMap<>();
         if (count == 0) {
             data.put("poem", null);
             return data;
         }
         int day = LocalDate.now().getDayOfYear();
-        Poem poem = poemMapper.findByOffset(day % count);
+        Poem poem = poemMapper.findByOffsetCurated(day % count);
         data.put("poem", poem);
         data.put("date", LocalDate.now().toString());
         data.put("index", day % count);
@@ -84,11 +116,8 @@ public class PoetryService {
     /** 情绪/朝代筛选的可选项（前端筛选项不写死）。 */
     public Map<String, Object> facets() {
         Map<String, Object> data = new HashMap<>();
-        data.put("dynasties", poetMapper.list(null).stream()
-                .map(Poet::getDynasty).distinct().sorted().toList());
-        data.put("moods", poemMapper.search(null, null, null).stream()
-                .map(Poem::getMood).filter(m -> m != null && !m.isBlank())
-                .distinct().sorted().toList());
+        data.put("dynasties", poetMapper.distinctDynasties());
+        data.put("moods", poemMapper.distinctMoods());
         data.put("poemCount", poemMapper.countAll());
         return data;
     }

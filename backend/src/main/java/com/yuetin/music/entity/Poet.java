@@ -20,6 +20,9 @@ public class Poet {
     private String story;
     private String storyTitle;
 
+    /** 内容分层：1 精选 / 2 语料 */
+    private Integer tier;
+
     /** 人生行旅图：JSON 数组，按时间序的落脚点（地名/经纬/年代/行止/该地所作诗）。 */
     private String journey;
     private Date createTime;

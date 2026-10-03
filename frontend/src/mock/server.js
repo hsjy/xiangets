@@ -544,6 +544,20 @@ export async function handle(ctx) {
           }
           return ok(list)
         }
+        if (method === 'GET' && seg[1] === 'page') {
+          let list = POEMS.map(poemView)
+          if (ctx.query.dynasty) list = list.filter((m) => m.dynasty === ctx.query.dynasty)
+          if (ctx.query.mood) list = list.filter((m) => m.mood === ctx.query.mood)
+          if (ctx.query.keyword) {
+            const k = ctx.query.keyword
+            list = list.filter((m) => (m.title + m.subtitle + m.paragraphs + m.poetName).includes(k))
+          }
+          const total = list.length
+          const size = Math.min(100, Number(ctx.query.size) || 48)
+          const page = Math.max(1, Number(ctx.query.page) || 1)
+          list = list.slice((page - 1) * size, page * size)
+          return ok({ list, total, page, size })
+        }
         if (method === 'GET' && seg[1] === 'detail') {
           const m = POEMS.map(poemView).find((x) => x.id === Number(seg[2]))
           return m ? ok(m) : fail(404, '诗不存在')
@@ -618,6 +632,19 @@ export async function handle(ctx) {
           let list = POETS.map((p) => ({ ...p, poemCount: POEMS.filter((m) => m.poetId === p.id).length }))
           if (ctx.query.dynasty) list = list.filter((p) => p.dynasty === ctx.query.dynasty)
           return ok(list)
+        }
+        if (method === 'GET' && seg[1] === 'page') {
+          let list = POETS.map((p) => ({ ...p, poemCount: POEMS.filter((m) => m.poetId === p.id).length }))
+          if (ctx.query.dynasty) list = list.filter((p) => p.dynasty === ctx.query.dynasty)
+          if (ctx.query.keyword) {
+            const k = ctx.query.keyword
+            list = list.filter((p) => (p.name + p.zi + p.hao + p.title).includes(k))
+          }
+          const total = list.length
+          const size = Math.min(100, Number(ctx.query.size) || 48)
+          const page = Math.max(1, Number(ctx.query.page) || 1)
+          list = list.slice((page - 1) * size, page * size)
+          return ok({ list, total, page, size })
         }
         if (method === 'GET' && seg[1] === 'detail' && seg[2]) {
           const p = POETS.find((x) => x.id === Number(seg[2]))

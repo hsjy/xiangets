@@ -76,12 +76,12 @@ onMounted(async () => {
       poetryApi.random(),
       poetryApi.today(),
       poetryApi.facets(),
-      poetryApi.poetList()
+      poetryApi.poetPage({ page: 1, size: 14 })
     ])
     if (h.status === 'fulfilled') { heroPoem.value = h.value.data; rollScene() }
     if (t.status === 'fulfilled') today.value = t.value.data
     if (f.status === 'fulfilled') facets.value = f.value.data
-    if (g.status === 'fulfilled') poets.value = g.value.data
+    if (g.status === 'fulfilled') poets.value = g.value.data.list
 
     /* AI 谱曲 showcase：取三首已有 AI 轨的诗 */
     const demo = [18, 8, 24]

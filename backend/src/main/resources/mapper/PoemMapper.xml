@@ -5,7 +5,7 @@
 
     <sql id="listCols">
         m.id, m.title, m.subtitle, m.poet_id, m.dynasty, m.genre, m.paragraphs,
-        m.mood, m.famous_line, m.create_time,
+        m.mood, m.famous_line, m.tier, m.create_time,
         p.name AS poet_name, p.years AS poet_years, p.title AS poet_title
     </sql>
 
@@ -54,5 +54,57 @@
 
     <select id="countAll" resultType="long">
         SELECT COUNT(*) FROM poem
+    </select>
+
+    <!-- 语料库分页浏览：tier 可空表示全部 -->
+    <sql id="searchWhere">
+        <where>
+            <if test="dynasty != null and dynasty != ''">AND m.dynasty = #{dynasty}</if>
+            <if test="mood != null and mood != ''">AND m.mood = #{mood}</if>
+            <if test="tier != null">AND m.tier = #{tier}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (m.title LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.subtitle LIKE CONCAT('%', #{keyword}, '%')
+                     OR m.paragraphs LIKE CONCAT('%', #{keyword}, '%')
+                     OR p.name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </sql>
+
+    <select id="pageSearch" resultType="Poem">
+        SELECT <include refid="listCols"/>
+        FROM poem m
+        JOIN poet p ON p.id = m.poet_id
+        <include refid="searchWhere"/>
+        ORDER BY m.id ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countSearch" resultType="long">
+        SELECT COUNT(*)
+        FROM poem m
+        JOIN poet p ON p.id = m.poet_id
+        <include refid="searchWhere"/>
+    </select>
+
+    <!-- 精选层计数（今日一诗/随机一诗只在精选层轮换） -->
+    <select id="countCurated" resultType="long">
+        SELECT COUNT(*) FROM poem WHERE tier = 1
+    </select>
+
+    <select id="findByOffsetCurated" resultType="Poem">
+        SELECT <include refid="listCols"/>,
+               m.annotation, m.translation, m.appreciation
+        FROM poem m
+        JOIN poet p ON p.id = m.poet_id
+        WHERE m.tier = 1
+        LIMIT 1 OFFSET #{offset}
+    </select>
+
+    <!-- 筛选项：全库 DISTINCT 直接在库端算（勿再全表拉回内存） -->
+    <select id="distinctMoods" resultType="string">
+        SELECT DISTINCT mood FROM poem
+        WHERE mood IS NOT NULL AND mood != ''
+        ORDER BY mood
     </select>
 </mapper>

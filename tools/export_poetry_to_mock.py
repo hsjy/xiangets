@@ -46,7 +46,7 @@ def cast(v):
 poets = []
 for row in q("SELECT id,name,IFNULL(zi,''),IFNULL(hao,''),dynasty,IFNULL(years,''),"
              "IFNULL(title,''),IFNULL(intro,''),IFNULL(story,''),IFNULL(story_title,''),"
-             "IFNULL(journey,'') FROM poet ORDER BY id"):
+             "IFNULL(journey,'') FROM poet WHERE tier=1 ORDER BY id"):
     poets.append(dict(zip(['id', 'name', 'zi', 'hao', 'dynasty', 'years', 'title',
                            'intro', 'story', 'storyTitle', 'journey'], [cast(x) for x in row])))
 
@@ -54,7 +54,7 @@ poems = []
 for row in q("SELECT m.id,m.title,IFNULL(m.subtitle,''),m.poet_id,m.dynasty,IFNULL(m.genre,''),"
              "m.paragraphs,IFNULL(m.annotation,''),IFNULL(m.translation,''),IFNULL(m.appreciation,''),"
              "IFNULL(m.mood,''),IFNULL(m.famous_line,''),p.name FROM poem m "
-             "JOIN poet p ON p.id=m.poet_id ORDER BY m.id"):
+             "JOIN poet p ON p.id=m.poet_id WHERE m.tier=1 ORDER BY m.id"):
     poems.append(dict(zip(['id', 'title', 'subtitle', 'poetId', 'dynasty', 'genre', 'paragraphs',
                            'annotation', 'translation', 'appreciation', 'mood', 'famousLine',
                            'poetName'], [cast(x) for x in row])))
