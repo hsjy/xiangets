@@ -86,7 +86,7 @@ watch(() => route.params.id, (id) => { if (id && route.path.startsWith('/poet/')
           <span class="stamp">{{ poet.name.slice(0, 1) }}</span>
           人生行旅图
         </h2>
-        <JourneyMap :journey="journey" :poems="poems" />
+        <JourneyMap :journey="journey" :poems="poems" :dynasty="poet.dynasty" />
       </section>
 
       <!-- 存诗 -->

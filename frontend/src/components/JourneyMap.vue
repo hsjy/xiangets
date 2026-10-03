@@ -4,14 +4,17 @@
  * 底图为生成资产（china-outline.js，等经纬投影 1000x720），
  * 诗人落脚点按时间序连成朱砂虚线；地名旁小字标注该地所作诗题，
  * 点诗题直接进入意境页，点落脚点在看下方行止卡片。
+ * 支持滚轮/双指缩放、拖拽平移；放大后淡入诗人朝代的行政区划
+ * （唐·道 / 宋·路 / 东晋·州，示意界线，按需懒加载）。
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { CHINA_MAP } from '../assets/china-outline'
 
 const props = defineProps({
   journey: { type: Array, required: true },   // [{place, modern, lon, lat, period, event, poems:[id]}]
-  poems: { type: Array, required: true }      // 该诗人存诗（用于把 id 解析成标题）
+  poems: { type: Array, required: true },     // 该诗人存诗（用于把 id 解析成标题）
+  dynasty: { type: String, default: '' }      // 诗人朝代（魏晋/唐/宋）→ 对应区划图层
 })
 const router = useRouter()
 const selected = ref(-1)
@@ -22,6 +25,106 @@ const proj = (lon, lat) => [
   (lon - 73) / (135.2 - 73) * VIEW_W,
   (53.8 - lat) / (53.8 - 17.8) * VIEW_H
 ]
+
+/* ---------------- 缩放与平移（操作 viewBox） ---------------- */
+
+const MIN_W = 130, MAX_W = VIEW_W          // 最大约 7.7 倍
+const vb = ref({ x: 0, y: 0, w: VIEW_W, h: VIEW_H })
+const zoom = computed(() => VIEW_W / vb.value.w)        // 1 = 全图
+const invK = computed(() => vb.value.w / VIEW_W)        // 叠加层反向缩放系数
+const dynOn = ref(false)                                // 手动常显区划层
+const REGION_ZOOM = 1.55                                // 放大到该倍率自动淡入区划
+const regionShow = computed(() => dynOn.value || zoom.value >= REGION_ZOOM)
+
+function clampVB(v) {
+  v.w = Math.min(MAX_W, Math.max(MIN_W, v.w))
+  v.h = v.w * VIEW_H / VIEW_W
+  v.x = Math.min(VIEW_W - v.w, Math.max(0, v.x))
+  v.y = Math.min(VIEW_H - v.h, Math.max(0, v.y))
+  return v
+}
+
+/** 以 svg 坐标 (px,py) 为锚缩放 f 倍 */
+function zoomAt(px, py, f) {
+  const v = vb.value
+  const w = Math.min(MAX_W, Math.max(MIN_W, v.w / f))
+  const k = w / v.w
+  vb.value = clampVB({ w, h: 0, x: px - (px - v.x) * k, y: py - (py - v.y) * k })
+}
+
+function svgPoint(e) {
+  const r = svgEl.value.getBoundingClientRect()
+  return [vb.value.x + (e.clientX - r.left) / r.width * vb.value.w,
+          vb.value.y + (e.clientY - r.top) / r.height * vb.value.h]
+}
+
+function onWheel(e) {
+  e.preventDefault()
+  const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY
+  const [px, py] = svgPoint(e)
+  zoomAt(px, py, Math.exp(-d * 0.0022))
+}
+
+/* 指针：拖拽平移；双指针捏合缩放 */
+const svgEl = ref(null)
+const pointers = new Map()
+let dragMoved = 0
+let pinch = null
+
+function onDown(e) {
+  svgEl.value.setPointerCapture?.(e.pointerId)
+  pointers.set(e.pointerId, [e.clientX, e.clientY])
+  dragMoved = 0
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()]
+    pinch = { dist: Math.hypot(a[0] - b[0], a[1] - b[1]) }
+  }
+}
+function onMove(e) {
+  if (!pointers.has(e.pointerId)) return
+  const prev = pointers.get(e.pointerId)
+  pointers.set(e.pointerId, [e.clientX, e.clientY])
+
+  if (pointers.size === 2 && pinch) {
+    const [a, b] = [...pointers.values()]
+    const dist = Math.hypot(a[0] - b[0], a[1] - b[1])
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2
+    const r = svgEl.value.getBoundingClientRect()
+    const px = vb.value.x + (mx - r.left) / r.width * vb.value.w
+    const py = vb.value.y + (my - r.top) / r.height * vb.value.h
+    zoomAt(px, py, dist / (pinch.dist || dist))
+    pinch.dist = dist
+    dragMoved = 99
+    return
+  }
+  const r = svgEl.value.getBoundingClientRect()
+  const dx = (e.clientX - prev[0]) / r.width * vb.value.w
+  const dy = (e.clientY - prev[1]) / r.height * vb.value.h
+  dragMoved += Math.abs(dx) + Math.abs(dy)
+  vb.value.x -= dx
+  vb.value.y -= dy
+  clampVB(vb.value)
+}
+function onUp(e) {
+  pointers.delete(e.pointerId)
+  if (pointers.size < 2) pinch = null
+}
+/** 拖拽后抑制误触点击 */
+function onClickGuard() { return dragMoved > 6 }
+
+const dynLayer = ref(null)
+const DYN_KEY = { 魏晋: 'dongjin', 唐: 'tang', 宋: 'song' }
+watch(() => props.dynasty, async (d) => {
+  dynLayer.value = null
+  const key = DYN_KEY[d]
+  if (!key) return
+  try {
+    const mod = await import(`../assets/china-dyn-${key}.js`)
+    dynLayer.value = mod.DYNASTY_MAP
+  } catch { /* 图层缺失不碍事 */ }
+}, { immediate: true })
+
+/* ---------------- 站点与标签 ---------------- */
 
 const stops = computed(() => {
   const list = props.journey.map((s) => {
@@ -91,6 +194,9 @@ function placeLabels(list) {
     blocks.push({ x: lx, y: ly - 15, w: wMax, h })
     s.lx = lx
     s.ly = ly
+    // 标签改为相对点心坐标，便于随缩放整体反向缩放
+    s.lxr = lx - s.x
+    s.lyr = ly - s.y
   }
   return list
 }
@@ -110,6 +216,15 @@ function gotoPoem(id) {
   router.push(`/poem/${id}`)
 }
 
+function toggleSelect(i) {
+  if (!onClickGuard()) selected.value = selected.value === i ? -1 : i
+}
+
+function resetView() {
+  dynOn.value = false
+  vb.value = { x: 0, y: 0, w: VIEW_W, h: VIEW_H }
+}
+
 /** 站点序号用汉字数字，与舆图气质一致 */
 function cnNum(n) {
   const cn = '一二三四五六七八九十'
@@ -124,10 +239,25 @@ const cnNo = (n) => cnNum(n) + '\u2002'
 <template>
   <div class="jmap">
     <div class="map-wrap">
-    <svg :viewBox="`0 0 ${VIEW_W} ${VIEW_H}`" class="map" role="img" aria-label="诗人行旅图">
+    <svg ref="svgEl"
+         :viewBox="`${vb.x} ${vb.y} ${vb.w} ${vb.h}`"
+         class="map" role="img" aria-label="诗人行旅图"
+         @wheel="onWheel" @pointerdown="onDown" @pointermove="onMove"
+         @pointerup="onUp" @pointercancel="onUp"
+         @click.capture="onClickGuard() && $event.stopPropagation()">
       <!-- 舆图底：陆域淡墨、江河淡青 -->
       <path :d="CHINA_MAP.land" class="land" />
       <path v-for="(r, i) in CHINA_MAP.rivers" :key="'r' + i" :d="r" class="river" />
+
+      <!-- 朝代行政区划（放大淡入；界线系示意） -->
+      <g v-if="dynLayer" class="dyn" :class="{ show: regionShow }" aria-hidden="true">
+        <g v-for="(u, i) in dynLayer.units" :key="i" class="unit">
+          <path :d="u.d" class="unit-land" :class="{ alt: i % 2 }" />
+          <path :d="u.d" class="unit-edge" />
+          <text :x="u.label[0]" :y="u.label[1]" class="unit-name"
+                :font-size="13 * invK" :letter-spacing="2 * invK">{{ u.name }}</text>
+        </g>
+      </g>
 
       <!-- 南海诸岛小图框 -->
       <g class="inset">
@@ -142,22 +272,35 @@ const cnNo = (n) => cnNum(n) + '\u2002'
       <!-- 行旅路线 -->
       <path :d="routePath" class="route" />
 
-      <!-- 落脚点 -->
+      <!-- 落脚点（随缩放反向缩放，保持圆点与文字观感恒定） -->
       <g v-for="(s, i) in stops" :key="i" class="stop" :class="{ on: selected === i }"
-         @click="selected = selected === i ? -1 : i">
-        <circle :cx="s.x" :cy="s.y" r="10" class="halo" />
-        <circle :cx="s.x" :cy="s.y" r="4.5" class="dot" />
+         :transform="`translate(${s.x} ${s.y}) scale(${invK})`"
+         @click="toggleSelect(i)">
+        <circle r="10" class="halo" />
+        <circle r="4.5" class="dot" />
         <!-- 地名 + 旁注诗题（隐式小字，可点进诗） -->
         <g class="labels">
-          <text :x="s.lx" :y="s.ly" class="place">
+          <text :x="s.lxr" :y="s.lyr" class="place">
             <tspan class="no">{{ cnNo(i + 1) }}</tspan>{{ s.place }}
           </text>
           <text v-for="(p, k) in s.poems" :key="k" class="poem"
-                :x="s.lx + 10" :y="s.ly + 14 + k * 14"
+                :x="s.lxr + 10" :y="s.lyr + 14 + k * 14"
                 @click.stop="gotoPoem(p.id)">《{{ p.title }}{{ p.subtitle ? '·' + p.subtitle : '' }}》</text>
         </g>
       </g>
     </svg>
+
+    <!-- 缩放与图层控件 -->
+    <div class="ctrl">
+      <button class="cbtn" title="放大" @click="zoomAt(vb.x + vb.w / 2, vb.y + vb.h / 2, 1.5)" data-test="zoom-in">＋</button>
+      <button class="cbtn" title="缩小" @click="zoomAt(vb.x + vb.w / 2, vb.y + vb.h / 2, 1 / 1.5)" data-test="zoom-out">－</button>
+      <button class="cbtn" title="复位" @click="resetView()" data-test="zoom-reset">⌂</button>
+      <button v-if="dynLayer" class="cbtn wide" :class="{ on: dynOn }"
+              :title="`${dynLayer.title}常显`" @click="dynOn = !dynOn" data-test="dyn-toggle">
+        {{ dynLayer.title }}
+      </button>
+    </div>
+    <span class="tip" v-if="!dynOn && dynLayer">滚轮缩放 · 拖拽平移 · 放大后现{{ dynLayer.dynasty === 'tang' ? '唐道' : dynLayer.dynasty === 'song' ? '宋路' : '东晋州' }}</span>
     </div>
 
     <!-- 行止卡片 -->
@@ -183,13 +326,25 @@ const cnNo = (n) => cnNum(n) + '\u2002'
 
 <style scoped>
 .jmap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
-.map-wrap { min-width: 0; }
-.map { width: 100%; height: auto; display: block; border-radius: 10px; }
+.map-wrap { min-width: 0; position: relative; }
+.map { width: 100%; height: auto; display: block; border-radius: 10px; touch-action: none; cursor: grab; }
+.map:active { cursor: grabbing; }
 
-.land { fill: #e9e3d2; stroke: #b9ae94; stroke-width: 1; }
-.inset-frame { fill: none; stroke: #b9ae94; stroke-width: 1; }
+.land { fill: #e9e3d2; stroke: #b9ae94; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.inset-frame { fill: none; stroke: #b9ae94; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .inset-label { font-size: 11px; fill: var(--text-3); text-anchor: middle; letter-spacing: 2px; }
-.river { fill: none; stroke: #9db4a5; stroke-width: 2; opacity: 0.65; stroke-linecap: round; }
+.river { fill: none; stroke: #9db4a5; stroke-width: 2; opacity: 0.65; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+
+/* 朝代区划层：淡入 */
+.dyn { opacity: 0; transition: opacity 0.5s; pointer-events: none; }
+.dyn.show { opacity: 1; }
+.unit-land { fill: rgba(64, 99, 77, 0.05); stroke: none; }
+.unit-land.alt { fill: rgba(184, 134, 11, 0.05); }
+.unit-edge { fill: none; stroke: #a89c7e; stroke-width: 1; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.unit-name {
+  fill: #7a6f57; text-anchor: middle; font-weight: 600;
+  paint-order: stroke; stroke: rgba(241, 234, 217, 0.8); stroke-width: 3px;
+}
 
 .route {
   fill: none;
@@ -199,13 +354,14 @@ const cnNo = (n) => cnNum(n) + '\u2002'
   stroke-linejoin: round;
   stroke-linecap: round;
   opacity: 0.75;
+  vector-effect: non-scaling-stroke;
   animation: march 30s linear infinite;
 }
 @keyframes march { to { stroke-dashoffset: -650; } }
 
 .stop { cursor: pointer; }
 .halo { fill: var(--seal); opacity: 0.14; }
-.dot { fill: var(--seal); stroke: var(--card); stroke-width: 1.5; transition: r 0.15s; }
+.dot { fill: var(--seal); stroke: var(--card); stroke-width: 1.5; }
 .stop:hover .dot, .stop.on .dot { r: 6; }
 .stop:hover .halo, .stop.on .halo { opacity: 0.24; }
 
@@ -220,6 +376,27 @@ const cnNo = (n) => cnNum(n) + '\u2002'
   stroke-width: 3px;
 }
 .poem:hover { fill: var(--seal); text-decoration: underline; }
+
+.ctrl { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.cbtn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: rgba(250, 246, 234, 0.92);
+  color: var(--text-2);
+  font-size: 15px;
+  cursor: pointer;
+  line-height: 1;
+  backdrop-filter: blur(4px);
+}
+.cbtn:hover { color: var(--seal); border-color: var(--seal); }
+.cbtn.wide { width: auto; padding: 0 10px; font-size: 11.5px; letter-spacing: 1px; }
+.cbtn.on { background: var(--seal); border-color: var(--seal); color: #fbf6ea; }
+.tip {
+  position: absolute; left: 12px; bottom: 10px;
+  font-size: 11px; color: var(--text-3); letter-spacing: 1px;
+  background: rgba(250, 246, 234, 0.8); padding: 2px 8px; border-radius: 999px;
+}
 
 .detail { padding: 16px 18px; min-height: 180px; }
 .detail.empty { display: flex; align-items: center; }
@@ -240,9 +417,5 @@ const cnNo = (n) => cnNum(n) + '\u2002'
 
 @media (max-width: 1020px) {
   .jmap { grid-template-columns: 1fr; }
-}
-@media (max-width: 860px) {
-  /* 窄屏：地图本身保纵横比缩放，文字随 SVG 等比缩小，可横向滚动保可读 */
-  .map-wrap { overflow-x: auto; }
 }
 </style>
