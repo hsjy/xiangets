@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '../stores/player'
 import { formatDuration } from '../utils/format'
 import { toast } from '../utils/toast'
+import { confirmAction } from '../stores/ui'
 import { songApi } from '../api'
 import Icon from './Icon.vue'
 
@@ -12,6 +13,45 @@ const player = usePlayerStore()
 const audioRef = ref(null)
 const liked = ref(false)
 const likePending = ref(false)
+
+/* ---------- 闲置虚化：鼠标离开曲签数秒后淡出，悬停即恢复 ---------- */
+const IDLE_MS = 3500
+const faded = ref(false)
+let fadeTimer = null
+function armFade() {
+  clearTimeout(fadeTimer)
+  fadeTimer = setTimeout(() => { faded.value = true }, IDLE_MS)
+}
+function wake() {
+  clearTimeout(fadeTimer)
+  faded.value = false
+  armFade()
+}
+function onBarEnter() { wake() }
+function onBarLeave() { armFade() }
+onMounted(() => {
+  armFade()                       // 页面加载后无悬停，片刻即虚化
+  document.addEventListener('click', onDocClick)
+})
+onBeforeUnmount(() => {
+  clearTimeout(fadeTimer)
+  document.removeEventListener('click', onDocClick)
+})
+
+/* ---------- 播放列表浮层（锚在列表图标上方，点外部关闭） ---------- */
+function onDocClick(e) {
+  if (!player.queueVisible) return
+  if (e.target.closest('.queue-pop') || e.target.closest('[data-test="queue-toggle"]')) return
+  player.queueVisible = false
+}
+
+async function onClearQueue() {
+  const yes = await confirmAction(`确定清空播放列表（共 ${player.queue.length} 首）吗？`, '清空播放列表')
+  if (yes) {
+    player.clearQueue()
+    toast.success('播放列表已清空')
+  }
+}
 
 onMounted(() => {
   player.attach(audioRef.value)
@@ -102,14 +142,16 @@ watch(() => player.currentId, async (id) => {
     @error="onError"
   />
 
-  <!-- 浮动曲签：有曲可播才现身；点主体直达对应古诗页 -->
+  <!-- 浮动曲签：有曲可播才现身；点主体直达对应古诗页；闲置自动虚化 -->
   <div
     v-if="player.hasTrack"
     class="player-bar"
-    :class="{ clickable: !!player.current?.poemId }"
-    :title="player.current?.poemId ? '查看此诗' : null"
+    :class="{ clickable: !!player.current?.poemId, faded }"
+    :title="player.current?.poemId && !faded ? '查看此诗' : null"
     data-test="player-bar"
     @click="goPoem"
+    @mouseenter="onBarEnter"
+    @mouseleave="onBarLeave"
   >
     <!-- 左：曲目 -->
     <div class="left">
@@ -171,6 +213,32 @@ watch(() => player.currentId, async (id) => {
         <Icon name="queue" :size="16" />
         <span v-if="player.queue.length" class="badge">{{ player.queue.length }}</span>
       </button>
+
+      <!-- 播放列表浮层：锚在列表图标上方，与曲签同风格 -->
+      <div v-if="player.queueVisible" class="queue-pop" data-test="queue-pop" @click.stop>
+        <div class="qp-head">
+          <span class="qp-title">当前播放 <i>{{ player.queue.length }}</i></span>
+          <button class="qp-clear" v-if="player.queue.length" @click="onClearQueue">清空</button>
+        </div>
+        <div class="qp-body">
+          <div v-if="!player.queue.length" class="qp-empty">播放列表还是空的<br />去挑几首喜欢的诗吧</div>
+          <div
+            v-for="(s, i) in player.queue" :key="s.id"
+            class="qp-item" :class="{ current: s.id === player.currentId }"
+            @click="player.playSong(s)"
+          >
+            <span class="qp-idx">{{ i + 1 }}</span>
+            <span class="qp-info">
+              <span class="qp-name">{{ s.name }}</span>
+              <span class="qp-singer">{{ s.singerName }}</span>
+            </span>
+            <span class="qp-dur">{{ formatDuration(s.duration) }}</span>
+            <button class="qp-del" title="移除" @click.stop="player.removeFromQueue(s.id)">
+              <Icon name="x" :size="13" />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -193,7 +261,7 @@ watch(() => player.currentId, async (id) => {
   gap: 14px;
   padding: 10px 16px;
   z-index: 100;
-  animation: player-rise 0.5s cubic-bezier(0.21, 0.9, 0.34, 1.12) both;
+  animation: player-rise 0.5s cubic-bezier(0.21, 0.9, 0.34, 1.12) backwards;
 }
 @keyframes player-rise {
   from { opacity: 0; transform: translate(-50%, 34px); }
@@ -201,6 +269,16 @@ watch(() => player.currentId, async (id) => {
 }
 .player-bar.clickable { cursor: pointer; }
 .player-bar.clickable:hover { border-color: var(--primary); }
+.player-bar.faded {
+  opacity: 0.14;
+  filter: blur(2.5px) saturate(0.7);
+}
+.player-bar {
+  transition: opacity 0.6s ease, filter 0.6s ease, border-color 0.15s;
+}
+/* 虚化时禁掉内部交互，避免误触 */
+.player-bar.faded * { pointer-events: none; }
+.player-bar.faded { pointer-events: auto; }
 
 .left { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .cover {
@@ -300,5 +378,87 @@ watch(() => player.currentId, async (id) => {
   .right .vol { display: none; }
   .right .slim:not([data-test='queue-toggle']) { display: none; }
   .like { display: none; }
+  .queue-pop { right: 0; width: min(320px, calc(100vw - 24px)); }
 }
+
+/* ---------- 播放列表浮层 ---------- */
+.queue-pop {
+  position: absolute;
+  right: 10px;
+  bottom: calc(100% + 14px);
+  width: 340px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: rgba(250, 246, 234, 0.97);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 18px 48px rgba(72, 58, 32, 0.24), 0 2px 8px rgba(72, 58, 32, 0.08);
+  overflow: hidden;
+  cursor: default;
+  animation: qp-rise 0.32s cubic-bezier(0.21, 0.9, 0.34, 1.12) backwards;
+}
+@keyframes qp-rise {
+  from { opacity: 0; transform: translateY(12px); }
+}
+.queue-pop::after {          /* 连接曲签的小尖角 */
+  content: '';
+  position: absolute;
+  right: 26px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: rgba(250, 246, 234, 0.97);
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  transform: rotate(45deg);
+}
+.qp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.qp-title { font-size: 14px; font-weight: 600; }
+.qp-title i { font-style: normal; color: var(--accent); margin-left: 2px; }
+.qp-clear {
+  border: 1px solid var(--border-strong);
+  background: none;
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.qp-clear:hover { color: var(--seal); border-color: var(--seal); }
+.qp-body { overflow-y: auto; padding: 6px 8px 10px; }
+.qp-empty { padding: 44px 0; text-align: center; font-size: 12.5px; color: var(--text-3); line-height: 2; }
+.qp-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.qp-item:hover { background: rgba(64, 99, 77, 0.07); }
+.qp-item.current { background: rgba(165, 64, 45, 0.08); }
+.qp-item.current .qp-name { color: var(--seal); }
+.qp-idx { font-size: 11px; color: var(--text-3); width: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.qp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.qp-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qp-singer { font-size: 11px; color: var(--text-3); }
+.qp-dur { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.qp-del {
+  border: none;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 50%;
+}
+.qp-del:hover { color: var(--seal); background: rgba(165, 64, 45, 0.1); }
 </style>

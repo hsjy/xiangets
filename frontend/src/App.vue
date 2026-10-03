@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import TopNav from './components/TopNav.vue'
 import PlayerBar from './components/PlayerBar.vue'
-import QueueDrawer from './components/QueueDrawer.vue'
 import ToastHost from './components/ToastHost.vue'
 import ConfirmHost from './components/ConfirmHost.vue'
 import { usePlayerStore } from './stores/player'
@@ -24,7 +23,6 @@ const isHome = computed(() => route.path === '/')
       <router-view />
     </main>
     <PlayerBar />
-    <QueueDrawer />
   </div>
   <!-- Toast / 确认框必须在所有布局分支之外：登录/注册页（bare）也要能弹提示 -->
   <ToastHost />
