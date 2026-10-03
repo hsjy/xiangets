@@ -5,7 +5,7 @@
 
     <sql id="cols">
         p.id, p.name, p.zi, p.hao, p.dynasty, p.years, p.title, p.intro,
-        p.story, p.story_title, p.create_time
+        p.story, p.story_title, p.journey, p.create_time
     </sql>
 
     <!-- 列表带存诗数；故事长文不随列表下发，详情页单独取 -->

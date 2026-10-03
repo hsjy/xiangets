@@ -45,9 +45,10 @@ def cast(v):
 
 poets = []
 for row in q("SELECT id,name,IFNULL(zi,''),IFNULL(hao,''),dynasty,IFNULL(years,''),"
-             "IFNULL(title,''),IFNULL(intro,''),IFNULL(story,''),IFNULL(story_title,'') FROM poet ORDER BY id"):
+             "IFNULL(title,''),IFNULL(intro,''),IFNULL(story,''),IFNULL(story_title,''),"
+             "IFNULL(journey,'') FROM poet ORDER BY id"):
     poets.append(dict(zip(['id', 'name', 'zi', 'hao', 'dynasty', 'years', 'title',
-                           'intro', 'story', 'storyTitle'], [cast(x) for x in row])))
+                           'intro', 'story', 'storyTitle', 'journey'], [cast(x) for x in row])))
 
 poems = []
 for row in q("SELECT m.id,m.title,IFNULL(m.subtitle,''),m.poet_id,m.dynasty,IFNULL(m.genre,''),"

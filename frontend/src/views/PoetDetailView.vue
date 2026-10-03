@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { poetryApi } from '../api'
 import UserAvatar from '../components/UserAvatar.vue'
+import JourneyMap from '../components/JourneyMap.vue'
 import { usePlayerStore } from '../stores/player'
 
 const route = useRoute()
@@ -10,6 +11,16 @@ const player = usePlayerStore()
 const loading = ref(true)
 const poet = ref(null)
 const poems = ref([])
+
+/** 行旅数据是 JSON 字符串，解析失败则视作无行旅图 */
+const journey = computed(() => {
+  try {
+    const j = JSON.parse(poet.value?.journey || 'null')
+    return Array.isArray(j) && j.length ? j : null
+  } catch {
+    return null
+  }
+})
 
 function playPoem(p) {
   // 意境页负责音轨；诗人页提供快捷朗诵入口：取该诗第一条朗诵轨
@@ -23,15 +34,20 @@ function playPoem(p) {
   })
 }
 
-onMounted(async () => {
+async function load(id) {
+  loading.value = true
   try {
-    const { data } = await poetryApi.poetDetail(route.params.id)
+    const { data } = await poetryApi.poetDetail(id)
     poet.value = data.poet
     poems.value = data.poems
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(() => load(route.params.id))
+// 同文档导航（如诗人页之间跳转）不会重建组件，须监听参数重取
+watch(() => route.params.id, (id) => { if (id && route.path.startsWith('/poet/')) load(id) })
 </script>
 
 <template>
@@ -62,6 +78,15 @@ onMounted(async () => {
         <div class="story-body">
           <p v-for="(para, i) in poet.story.split('\n')" :key="i">{{ para }}</p>
         </div>
+      </section>
+
+      <!-- 人生行旅图 -->
+      <section class="journey card" v-if="journey">
+        <h2 class="story-title">
+          <span class="stamp">{{ poet.name.slice(0, 1) }}</span>
+          人生行旅图
+        </h2>
+        <JourneyMap :journey="journey" :poems="poems" />
       </section>
 
       <!-- 存诗 -->
@@ -134,6 +159,8 @@ onMounted(async () => {
   text-indent: 2em;
 }
 .story-body p:last-child { margin-bottom: 0; }
+
+.journey { margin-bottom: 30px; }
 
 .works-head { margin: 0 0 14px; font-size: 18px; }
 .poem-grid {

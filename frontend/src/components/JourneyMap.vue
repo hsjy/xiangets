@@ -1,0 +1,248 @@
+<script setup>
+/**
+ * 人生行旅图：古风舆图风格的 SVG 单组件。
+ * 底图为生成资产（china-outline.js，等经纬投影 1000x720），
+ * 诗人落脚点按时间序连成朱砂虚线；地名旁小字标注该地所作诗题，
+ * 点诗题直接进入意境页，点落脚点在看下方行止卡片。
+ */
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { CHINA_MAP } from '../assets/china-outline'
+
+const props = defineProps({
+  journey: { type: Array, required: true },   // [{place, modern, lon, lat, period, event, poems:[id]}]
+  poems: { type: Array, required: true }      // 该诗人存诗（用于把 id 解析成标题）
+})
+const router = useRouter()
+const selected = ref(-1)
+
+const VIEW_W = CHINA_MAP.width
+const VIEW_H = CHINA_MAP.height
+const proj = (lon, lat) => [
+  (lon - 73) / (135.2 - 73) * VIEW_W,
+  (53.8 - lat) / (53.8 - 17.8) * VIEW_H
+]
+
+const stops = computed(() => {
+  const list = props.journey.map((s) => {
+    const [x, y] = proj(s.lon, s.lat)
+    return {
+      ...s,
+      x, y,
+      poems: (s.poems || [])
+        .map((id) => props.poems.find((p) => p.id === id))
+        .filter(Boolean)
+    }
+  })
+  return placeLabels(list)
+})
+
+/**
+ * 标签避让：地名+旁注诗题整块摆放，按「右→左→上→下」贪心试探，
+ * 与已放置的标签块、落脚点、南海小图框都不冲突者为胜；
+ * 数据里给了 lx/ly 的点视为手工指定，不再自动摆放。
+ */
+function placeLabels(list) {
+  const blocks = []
+  const inset = { x: CHINA_MAP.insetBox.x, y: CHINA_MAP.insetBox.y - 16,
+                  w: CHINA_MAP.insetBox.w, h: CHINA_MAP.insetBox.h + 30 }
+
+  for (const s of list) {
+    const noW = 18, chW = 15.5, poemW = 12.5, lineH = 14.5
+    const w = noW + s.place.length * chW
+    const h = 21 + s.poems.length * lineH
+    const wMax = Math.max(w, ...s.poems.map((p) => 10 + (p.title.length + (p.subtitle ? p.subtitle.length + 1 : 0) + 2) * poemW))
+
+    let lx, ly
+    if (s.lx != null || s.ly != null) {
+      lx = s.x + (s.lx ?? 11)
+      ly = s.y + (s.ly ?? 5)
+    } else {
+      // 候选位（标签块左上角相对点心）：八方向 × 常用距离，逐个试探打分
+      const L = -(wMax + 12), C = -wMax / 2
+      const cands = [
+        [11, 5], [11, 20], [11, -12],          // 右 / 右下 / 右上
+        [C, 30], [C, -(h + 8)],                // 正下 / 正上
+        [L, 5], [L, 20], [L, -12],             // 左 / 左下 / 左上
+        [11, 38], [L, 38]                      // 更远的右下 / 左下（同址两站用）
+      ]
+      const score = (dx, dy) => {
+        const r = { x: s.x + dx, y: s.y + dy - 15, w: wMax, h }
+        let v = 0
+        for (const b of blocks) {
+          if (r.x < b.x + b.w && b.x < r.x + r.w && r.y < b.y + b.h && b.y < r.y + r.h) v += 2
+        }
+        for (const o of list) {
+          if (o === s) continue
+          // 块不得盖住其他落脚点：圆点半径约 4.5 加文字上伸部，余量取 8
+          if (r.x - 8 < o.x && o.x < r.x + r.w + 8 && r.y - 8 < o.y && o.y < r.y + r.h + 8) v += 5
+        }
+        if (r.x < inset.x + inset.w && inset.x < r.x + r.w &&
+            r.y < inset.y + inset.h && inset.y < r.y + r.h) v += 1
+        if (r.x < 0 || r.x + r.w > 1000 || r.y < 0 || r.y + r.h > 720) v += 3
+        return v
+      }
+      let bestV = Infinity
+      for (const [dx, dy] of cands) {
+        const v = score(dx, dy)
+        if (v < bestV) { bestV = v; lx = s.x + dx; ly = s.y + dy }
+      }
+    }
+    blocks.push({ x: lx, y: ly - 15, w: wMax, h })
+    s.lx = lx
+    s.ly = ly
+  }
+  return list
+}
+
+/** 行旅路线：按时间序把落脚点连成平滑曲线 */
+const routePath = computed(() => {
+  const pts = stops.value
+  if (pts.length < 2) return ''
+  let d = `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
+  for (let i = 1; i < pts.length; i++) d += `L${pts[i].x.toFixed(1)} ${pts[i].y.toFixed(1)}`
+  return d
+})
+
+const current = computed(() => stops.value[selected.value] || null)
+
+function gotoPoem(id) {
+  router.push(`/poem/${id}`)
+}
+
+/** 站点序号用汉字数字，与舆图气质一致 */
+function cnNum(n) {
+  const cn = '一二三四五六七八九十'
+  if (n <= 10) return cn[n - 1]
+  if (n < 20) return '十' + cn[n - 11]
+  return String(n)
+}
+
+const cnNo = (n) => cnNum(n) + '\u2002'
+</script>
+
+<template>
+  <div class="jmap">
+    <div class="map-wrap">
+    <svg :viewBox="`0 0 ${VIEW_W} ${VIEW_H}`" class="map" role="img" aria-label="诗人行旅图">
+      <!-- 舆图底：陆域淡墨、江河淡青 -->
+      <path :d="CHINA_MAP.land" class="land" />
+      <path v-for="(r, i) in CHINA_MAP.rivers" :key="'r' + i" :d="r" class="river" />
+
+      <!-- 南海诸岛小图框 -->
+      <g class="inset">
+        <rect :x="CHINA_MAP.insetBox.x" :y="CHINA_MAP.insetBox.y"
+              :width="CHINA_MAP.insetBox.w" :height="CHINA_MAP.insetBox.h" class="inset-frame" />
+        <path :d="CHINA_MAP.inset" class="land inset-land" />
+        <text :x="CHINA_MAP.insetBox.x + CHINA_MAP.insetBox.w / 2"
+              :y="CHINA_MAP.insetBox.y + CHINA_MAP.insetBox.h + 14"
+              class="inset-label">南海诸岛</text>
+      </g>
+
+      <!-- 行旅路线 -->
+      <path :d="routePath" class="route" />
+
+      <!-- 落脚点 -->
+      <g v-for="(s, i) in stops" :key="i" class="stop" :class="{ on: selected === i }"
+         @click="selected = selected === i ? -1 : i">
+        <circle :cx="s.x" :cy="s.y" r="10" class="halo" />
+        <circle :cx="s.x" :cy="s.y" r="4.5" class="dot" />
+        <!-- 地名 + 旁注诗题（隐式小字，可点进诗） -->
+        <g class="labels">
+          <text :x="s.lx" :y="s.ly" class="place">
+            <tspan class="no">{{ cnNo(i + 1) }}</tspan>{{ s.place }}
+          </text>
+          <text v-for="(p, k) in s.poems" :key="k" class="poem"
+                :x="s.lx + 10" :y="s.ly + 14 + k * 14"
+                @click.stop="gotoPoem(p.id)">《{{ p.title }}{{ p.subtitle ? '·' + p.subtitle : '' }}》</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+
+    <!-- 行止卡片 -->
+    <div class="detail card" :class="{ empty: !current }">
+      <template v-if="current">
+        <h3>
+          <span class="stamp">{{ current.place.slice(0, 1) }}</span>
+          {{ current.place }}
+          <small class="modern">{{ current.modern }}</small>
+        </h3>
+        <p class="period">{{ current.period }}</p>
+        <p class="event">{{ current.event }}</p>
+        <p class="dp" v-if="current.poems.length">
+          <template v-for="(p, k) in current.poems" :key="p.id">
+            <a @click.prevent="gotoPoem(p.id)" :href="`#/poem/${p.id}`">《{{ p.title }}{{ p.subtitle ? '·' + p.subtitle : '' }}》</a><span v-if="k < current.poems.length - 1"> · </span>
+          </template>
+        </p>
+      </template>
+      <p v-else class="hint">点地图上的地名，读诗人一程行止；旁注小字可直达该地所作之诗。</p>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.jmap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; align-items: start; }
+.map-wrap { min-width: 0; }
+.map { width: 100%; height: auto; display: block; border-radius: 10px; }
+
+.land { fill: #e9e3d2; stroke: #b9ae94; stroke-width: 1; }
+.inset-frame { fill: none; stroke: #b9ae94; stroke-width: 1; }
+.inset-label { font-size: 11px; fill: var(--text-3); text-anchor: middle; letter-spacing: 2px; }
+.river { fill: none; stroke: #9db4a5; stroke-width: 2; opacity: 0.65; stroke-linecap: round; }
+
+.route {
+  fill: none;
+  stroke: var(--seal);
+  stroke-width: 2.2;
+  stroke-dasharray: 7 6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.75;
+  animation: march 30s linear infinite;
+}
+@keyframes march { to { stroke-dashoffset: -650; } }
+
+.stop { cursor: pointer; }
+.halo { fill: var(--seal); opacity: 0.14; }
+.dot { fill: var(--seal); stroke: var(--card); stroke-width: 1.5; transition: r 0.15s; }
+.stop:hover .dot, .stop.on .dot { r: 6; }
+.stop:hover .halo, .stop.on .halo { opacity: 0.24; }
+
+.place { font-size: 15px; fill: var(--text); font-weight: 600; letter-spacing: 1px; paint-order: stroke; stroke: rgba(241, 234, 217, 0.85); stroke-width: 3px; }
+.no { fill: var(--seal); font-weight: 700; margin-right: 2px; }
+.poem {
+  font-size: 11.5px;
+  fill: var(--accent);
+  cursor: pointer;
+  paint-order: stroke;
+  stroke: rgba(241, 234, 217, 0.85);
+  stroke-width: 3px;
+}
+.poem:hover { fill: var(--seal); text-decoration: underline; }
+
+.detail { padding: 16px 18px; min-height: 180px; }
+.detail.empty { display: flex; align-items: center; }
+.hint { margin: 0; font-size: 13px; line-height: 2; color: var(--text-3); }
+.detail h3 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 6px; font-size: 17px; }
+.modern { font-size: 11.5px; color: var(--text-3); font-weight: 400; }
+.period { margin: 0 0 8px; font-size: 12px; color: var(--accent); }
+.event { margin: 0 0 8px; font-size: 13.5px; line-height: 2; color: var(--text-2); }
+.dp { margin: 0; font-size: 13px; }
+.dp a { color: var(--accent); cursor: pointer; }
+.dp a:hover { color: var(--seal); }
+.stamp {
+  width: 26px; height: 26px; border-radius: 5px;
+  background: var(--seal); color: #fbf6ea;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Ma Shan Zheng', 'LXGW WenKai', serif; font-size: 16px;
+}
+
+@media (max-width: 1020px) {
+  .jmap { grid-template-columns: 1fr; }
+}
+@media (max-width: 860px) {
+  /* 窄屏：地图本身保纵横比缩放，文字随 SVG 等比缩小，可横向滚动保可读 */
+  .map-wrap { overflow-x: auto; }
+}
+</style>
