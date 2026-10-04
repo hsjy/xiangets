@@ -129,12 +129,15 @@ watch(() => props.dynasty, async (d) => {
 const stops = computed(() => {
   const list = props.journey.map((s) => {
     const [x, y] = proj(s.lon, s.lat)
+    const poems = (s.poems || [])
+      .map((id) => props.poems.find((p) => p.id === id))
+      .filter(Boolean)
     return {
       ...s,
       x, y,
-      poems: (s.poems || [])
-        .map((id) => props.poems.find((p) => p.id === id))
-        .filter(Boolean)
+      poems,
+      // 旁注最多两首，其余收入下方行止卡片，保持地图整洁
+      shown: poems.slice(0, 2)
     }
   })
   return placeLabels(list)
@@ -153,8 +156,9 @@ function placeLabels(list) {
   for (const s of list) {
     const noW = 18, chW = 15.5, poemW = 12.5, lineH = 14.5
     const w = noW + s.place.length * chW
-    const h = 21 + s.poems.length * lineH
-    const wMax = Math.max(w, ...s.poems.map((p) => 10 + (p.title.length + (p.subtitle ? p.subtitle.length + 1 : 0) + 2) * poemW))
+    const moreW = s.poems.length > s.shown.length ? 44 : 0   // 「…余 N 首」一行
+    const h = 21 + s.shown.length * lineH + moreW
+    const wMax = Math.max(w, ...s.shown.map((p) => 10 + (p.title.length + (p.subtitle ? p.subtitle.length + 1 : 0) + 2) * poemW))
 
     let lx, ly
     if (s.lx != null || s.ly != null) {
@@ -278,14 +282,16 @@ const cnNo = (n) => cnNum(n) + '\u2002'
          @click="toggleSelect(i)">
         <circle r="10" class="halo" />
         <circle r="4.5" class="dot" />
-        <!-- 地名 + 旁注诗题（隐式小字，可点进诗） -->
+        <!-- 地名 + 旁注诗题（每地至多两首，可点进诗；其余见行止卡片） -->
         <g class="labels">
           <text :x="s.lxr" :y="s.lyr" class="place">
             <tspan class="no">{{ cnNo(i + 1) }}</tspan>{{ s.place }}
           </text>
-          <text v-for="(p, k) in s.poems" :key="k" class="poem"
+          <text v-for="(p, k) in s.shown" :key="k" class="poem"
                 :x="s.lxr + 10" :y="s.lyr + 14 + k * 14"
                 @click.stop="gotoPoem(p.id)">《{{ p.title }}{{ p.subtitle ? '·' + p.subtitle : '' }}》</text>
+          <text v-if="s.poems.length > s.shown.length" class="poem more"
+                :x="s.lxr + 10" :y="s.lyr + 14 + s.shown.length * 14">…余 {{ s.poems.length - s.shown.length }} 首</text>
         </g>
       </g>
     </svg>
@@ -376,6 +382,8 @@ const cnNo = (n) => cnNum(n) + '\u2002'
   stroke-width: 3px;
 }
 .poem:hover { fill: var(--seal); text-decoration: underline; }
+.poem.more { color: var(--text-3); cursor: default; }
+.poem.more:hover { fill: var(--text-3); text-decoration: none; }
 
 .ctrl { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 .cbtn {
