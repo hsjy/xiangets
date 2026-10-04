@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { poetryApi } from '../api'
+import { poetryApi, relationApi } from '../api'
 import UserAvatar from '../components/UserAvatar.vue'
 import JourneyMap from '../components/JourneyMap.vue'
+import PoetGraph from '../components/PoetGraph.vue'
 import { usePlayerStore } from '../stores/player'
 
 const route = useRoute()
@@ -11,6 +12,7 @@ const player = usePlayerStore()
 const loading = ref(true)
 const poet = ref(null)
 const poems = ref([])
+const relations = ref([])
 
 /** 行旅数据是 JSON 字符串，解析失败则视作无行旅图 */
 const journey = computed(() => {
@@ -40,6 +42,8 @@ async function load(id) {
     const { data } = await poetryApi.poetDetail(id)
     poet.value = data.poet
     poems.value = data.poems
+    relations.value = []
+    relationApi.byPoet(id).then(({ data: rel }) => { relations.value = rel }).catch(() => {})
   } finally {
     loading.value = false
   }
@@ -87,6 +91,15 @@ watch(() => route.params.id, (id) => { if (id && route.path.startsWith('/poet/')
           人生行旅图
         </h2>
         <JourneyMap :journey="journey" :poems="poems" :dynasty="poet.dynasty" />
+      </section>
+
+      <!-- 交游图谱 -->
+      <section class="journey card" v-if="relations.length">
+        <h2 class="story-title">
+          <span class="stamp">{{ poet.name.slice(0, 1) }}</span>
+          交游图谱
+        </h2>
+        <PoetGraph :poet="poet" :relations="relations" />
       </section>
 
       <!-- 存诗 -->

@@ -19,8 +19,22 @@ const navs = [
   { to: '/today', label: '今日' },
   { to: '/poems', label: '诗选' },
   { to: '/poets', label: '诗人' },
+  { to: '/collections', label: '选集' },
+  { to: '/feihua', label: '飞花令' },
   { to: '/study', label: '书斋' }
 ]
+
+/* 夜读模式：主题写在 <html data-theme>，localStorage 记忆 */
+const night = ref(localStorage.getItem('yuetin_theme') === 'dark')
+function applyTheme() {
+  document.documentElement.dataset.theme = night.value ? 'dark' : ''
+  localStorage.setItem('yuetin_theme', night.value ? 'dark' : 'light')
+}
+function toggleNight() {
+  night.value = !night.value
+  applyTheme()
+}
+applyTheme()
 
 // 首页顶部透出动态古画，滚动后或进入内页时变为纸质实底
 const overHero = computed(() => route.path === '/' && !scrolled.value)
@@ -86,6 +100,9 @@ onBeforeUnmount(() => {
     </form>
 
     <div class="right" ref="menuRef">
+      <button class="theme-btn" :title="night ? '切换到日间' : '切换到夜读'" @click="toggleNight" data-test="night-toggle">
+        {{ night ? '☾' : '☀' }}
+      </button>
       <template v-if="userStore.isLoggedIn">
         <button class="user-chip" @click.stop="menuOpen = !menuOpen" data-test="user-menu">
           <UserAvatar :name="userStore.user.name" :size="28" circle />
@@ -232,4 +249,16 @@ onBeforeUnmount(() => {
   .search-box { display: none; }
   .topnav { padding: 12px 18px; gap: 12px; }
 }
+.theme-btn {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 15px;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: all 0.2s;
+}
+.theme-btn:hover { color: var(--accent); border-color: var(--accent); }
 </style>

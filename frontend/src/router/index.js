@@ -12,6 +12,9 @@ const routes = [
   { path: '/poem/:id', name: 'poemDetail', component: () => import('../views/PoemDetailView.vue'), meta: { title: '意境' } },
   { path: '/poets', name: 'poets', component: () => import('../views/PoetsView.vue'), meta: { title: '诗人' } },
   { path: '/poet/:id', name: 'poetDetail', component: () => import('../views/PoetDetailView.vue'), meta: { title: '诗人' } },
+  { path: '/collections', name: 'collections', component: () => import('../views/CollectionsView.vue'), meta: { title: '选集' } },
+  { path: '/collection/:id', name: 'collectionDetail', component: () => import('../views/CollectionView.vue'), meta: { title: '选集' } },
+  { path: '/feihua', name: 'feihua', component: () => import('../views/FeihuaView.vue'), meta: { title: '飞花令' } },
   { path: '/study', name: 'study', component: () => import('../views/StudyView.vue'), meta: { title: '书斋', requiresAuth: true } },
   { path: '/profile', name: 'profile', component: () => import('../views/ProfileView.vue'), meta: { title: '个人资料', requiresAuth: true } },
 

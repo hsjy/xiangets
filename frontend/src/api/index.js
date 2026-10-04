@@ -106,3 +106,25 @@ export const poemCommentApi = {
   mine: () => request.get('/poem/comment/mine'),
   remove: (id) => request.delete(`/poem/comment/delete/${id}`)
 }
+
+/* 主题选集 */
+export const collectionApi = {
+  list: () => request.get('/collection/list'),
+  detail: (id) => request.get(`/collection/detail/${id}`)
+}
+
+/* 诗人关系图谱 */
+export const relationApi = {
+  byPoet: (id) => request.get(`/poet/relations/${id}`)
+}
+
+/* 问诗（DeepSeek 诗歌问答） */
+export const askApi = {
+  ask: (poemId, question, history) => request.post(`/poem/ask/${poemId}`, { question, history })
+}
+
+/* 飞花令 */
+export const feihuaApi = {
+  draw: (ch, exclude) => request.post('/feihua/draw', { char: ch, exclude }),
+  check: (ch, line, exclude) => request.post('/feihua/check', { char: ch, line, exclude })
+}

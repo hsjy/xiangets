@@ -72,6 +72,54 @@ function cascadeDeletePlaylist(db, playlistId) {
 }
 
 /* ---------------- 路由表 ---------------- */
+
+/** 归一化：去标点空白，用于对句比较 */
+const normLine = (s) => String(s || '').replace(/[，。？！；、：""''\s]/g, '')
+
+/** mock 主题选集（与后端 V17 种子对齐） */
+const MOCK_COLLECTIONS = [
+  { id: 1, title: '明月与乡愁', subtitle: '一轮月，照千古离人', intro: '从床前明月到千里共婵娟，月亮是中国人共同的信箱。', mood: '月夜', sort: 1, poemIds: [3, 13, 18, 78, 17, 96] },
+  { id: 2, title: '边塞烽烟', subtitle: '大漠孤烟，金戈铁马', intro: '出塞、从军、国殇——戍卒的月与将军的血。', mood: '家国', sort: 2, poemIds: [33, 35, 75, 94, 64] },
+  { id: 3, title: '田园与归隐', subtitle: '种豆南山，采菊东篱', intro: '把身体交给土地，把心交给自然。', mood: '田园', sort: 3, poemIds: [1, 2, 12, 30, 57, 67, 80] },
+  { id: 4, title: '长恨与深情', subtitle: '此情可待成追忆', intro: '从上古誓言到纳兰一叹，深情者的独白。', mood: '怀人', sort: 4, poemIds: [69, 70, 37, 38, 39, 45, 47, 49, 60, 102] },
+  { id: 5, title: '壮志与家国', subtitle: '铁马冰河，丹心汗青', intro: '他们把失意与不屈，都写成了山河。', mood: '家国', sort: 5, poemIds: [64, 11, 24, 58, 59, 110, 111, 119] },
+  { id: 6, title: '四季流转', subtitle: '人间寒暑皆成诗', intro: '春晓、夏荷、秋思、冬梅，一年的风景都在诗里。', mood: '闲适', sort: 6, poemIds: [29, 84, 15, 105, 112, 41, 113] }
+]
+
+/** mock 诗人关系（与后端 V18 对齐；按名字定位 id） */
+const MOCK_RELATIONS = [
+  ['李白', '孟浩然', '倾慕', '吾爱孟夫子，风流天下闻'],
+  ['李白', '杜甫', '挚友', '醉眠秋共被，携手日同行'],
+  ['李白', '王昌龄', '挚友', '我寄愁心与明月，随风直到夜郎西'],
+  ['李白', '高适', '交游', '梁宋之游，三人同席'],
+  ['杜甫', '高适', '交游', '梁宋之游，三人同席'],
+  ['王维', '孟浩然', '并称', '王孟，山水田园同调'],
+  ['陶渊明', '王维', '文脉', '田园一脉，隔代相承'],
+  ['陶渊明', '苏轼', '文脉', '东坡和陶诗百余首'],
+  ['白居易', '元稹', '挚友', '元白，诗筒传讯三十年'],
+  ['白居易', '刘禹锡', '挚友', '刘白，晚岁唱和于洛阳'],
+  ['韩愈', '孟郊', '交游', '韩孟联句，奇险相激'],
+  ['韩愈', '贾岛', '知遇', '推敲之遇，共论诗法'],
+  ['孟郊', '贾岛', '并称', '郊寒岛瘦'],
+  ['李商隐', '杜牧', '并称', '小李杜'],
+  ['晏殊', '欧阳修', '师承', '晏公执卷，欧公继起'],
+  ['欧阳修', '范仲淹', '同志', '庆历新政，同进同退'],
+  ['欧阳修', '苏轼', '师承', '老夫当避路，放他出一头地'],
+  ['苏轼', '秦观', '师承', '苏门四学士之首'],
+  ['苏轼', '王安石', '对手', '政敌而知己，金陵相会尽释前嫌'],
+  ['陆游', '辛弃疾', '同志', '南宋恢复双璧，临安曾同朝'],
+  ['李煜', '纳兰性德', '文脉', '容若词直追后主'],
+  ['曹操', '曹植', '父子', '建安风骨，三曹之亚'],
+  ['刘邦', '项羽', '对手', '楚汉相争，一歌一叹'],
+  ['屈原', '李白', '文脉', '骚人流风，谪仙狂想']
+].map(([n1, n2, relType, note]) => ({
+  poetId: POETS.find((p) => p.name === n1)?.id,
+  relatedId: POETS.find((p) => p.name === n2)?.id,
+  relType, note
+})).filter((r) => r.poetId && r.relatedId)
+
+const colView = (c) => ({ id: c.id, title: c.title, subtitle: c.subtitle, intro: c.intro, mood: c.mood, sort: c.sort, poemCount: c.poemIds.length })
+
 export async function handle(ctx) {
   const { method, path } = ctx
   const seg = path.split('/').filter(Boolean) // e.g. ['playlist','song','add']
@@ -513,6 +561,58 @@ export async function handle(ctx) {
     }
 
     /* ===== 站点统计 ===== */
+
+    /* ---------- 策展：选集 / 关系 / 飞花令 / 问诗（mock 版） ---------- */
+    if (seg[0] === 'collection') {
+      if (method === 'GET' && seg[1] === 'list') return ok(MOCK_COLLECTIONS.map(colView))
+      if (method === 'GET' && seg[1] === 'detail' && seg[2]) {
+        const c = MOCK_COLLECTIONS.find((x) => x.id === Number(seg[2]))
+        if (!c) return fail(404, '选集不存在')
+        const poems = POEMS.filter((m) => c.poemIds.includes(m.id))
+          .map((m) => ({ ...m, poetName: POETS.find((p) => p.id === m.poetId)?.name || '' }))
+        return ok({ collection: colView(c), poems })
+      }
+    }
+    if (seg[0] === 'poet' && seg[1] === 'relations' && seg[2]) {
+      const pid = Number(seg[2])
+      const rel = MOCK_RELATIONS.filter((r) => r.poetId === pid || r.relatedId === pid)
+        .map((r) => {
+          const other = r.poetId === pid ? r.relatedId : r.poetId
+          const p = POETS.find((x) => x.id === other)
+          return p ? { relatedId: p.id, relatedName: p.name, relatedTitle: p.title, relatedDynasty: p.dynasty, relType: r.relType, note: r.note } : null
+        })
+        .filter(Boolean)
+      return ok(rel)
+    }
+    if (seg[0] === 'feihua') {
+      if (method === 'POST' && seg[1] === 'draw') {
+        const ch = String(ctx.body?.char || '')
+        const exclude = new Set((ctx.body?.exclude || []).map(normLine))
+        const hits = []
+        for (const m of POEMS) {
+          for (const line of (m.paragraphs || '').split('\n')) {
+            if (line.includes(ch) && !exclude.has(normLine(line))) {
+              hits.push({ line, title: m.title, dynasty: m.dynasty, poetName: POETS.find((p) => p.id === m.poetId)?.name || '' })
+            }
+          }
+        }
+        if (!hits.length) return fail(400, `诗库中未找到含「${ch}」的诗句`)
+        return ok(hits[Math.floor(Math.random() * hits.length)])
+      }
+      if (method === 'POST' && seg[1] === 'check') {
+        const ch = String(ctx.body?.char || '')
+        const line = normLine(ctx.body?.line || '')
+        if (!line.includes(ch)) return fail(400, `对句里没有「${ch}」字`)
+        if (line.length < 4) return fail(400, '太短了，至少写完整一句')
+        const exists = POEMS.some((m) => normLine(m.paragraphs).includes(line))
+        if (!exists) return fail(400, '诗库里没有找到这一句，再想想？')
+        return ok({ ok: true })
+      }
+    }
+    if (seg[0] === 'poem' && seg[1] === 'ask' && seg[2]) {
+      return ok({ answer: '（mock 模式不接入 DeepSeek）此诗的妙处，待连上后端后再与先生细论。' })
+    }
+
     if (seg[0] === 'stats' && seg[1] === 'overview' && method === 'GET') {
       const db = loadDB()
       return ok({

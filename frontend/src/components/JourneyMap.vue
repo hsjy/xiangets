@@ -60,6 +60,7 @@ function svgPoint(e) {
 
 function onWheel(e) {
   e.preventDefault()
+  stopPlayback()
   const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY
   const [px, py] = svgPoint(e)
   zoomAt(px, py, Math.exp(-d * 0.0022))
@@ -72,6 +73,7 @@ let dragMoved = 0
 let pinch = null
 
 function onDown(e) {
+  stopPlayback()
   svgEl.value.setPointerCapture?.(e.pointerId)
   pointers.set(e.pointerId, [e.clientX, e.clientY])
   dragMoved = 0
@@ -111,6 +113,57 @@ function onUp(e) {
 }
 /** 拖拽后抑制误触点击 */
 function onClickGuard() { return dragMoved > 6 }
+
+/* ---------- 生涯回放：逐站高亮 + 镜头跟随 ---------- */
+const playing = ref(false)
+let playTimer = null
+let camRaf = null
+
+function flyTo(x, y, scale = 2.6) {
+  const targetW = VIEW_W / scale
+  const targetH = targetW * VIEW_H / VIEW_W
+  const to = clampVB({
+    w: targetW, h: targetH,
+    x: x - targetW / 2,
+    y: y - targetH / 2
+  })
+  const from = { ...vb.value }
+  const t0 = performance.now()
+  cancelAnimationFrame(camRaf)
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / 750)
+    const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2   // easeInOutQuad
+    vb.value = {
+      x: from.x + (to.x - from.x) * e,
+      y: from.y + (to.y - from.y) * e,
+      w: from.w + (to.w - from.w) * e,
+      h: from.h + (to.h - from.h) * e
+    }
+    if (k < 1) camRaf = requestAnimationFrame(step)
+  }
+  camRaf = requestAnimationFrame(step)
+}
+
+function stopPlayback() {
+  playing.value = false
+  clearInterval(playTimer)
+  cancelAnimationFrame(camRaf)
+}
+
+function startPlayback() {
+  if (playing.value || stops.value.length < 2) return
+  playing.value = true
+  let i = 0
+  const step = () => {
+    if (i >= stops.value.length) { stopPlayback(); return }
+    const st = stops.value[i]
+    selected.value = i
+    flyTo(st.x, st.y)
+    i++
+  }
+  step()
+  playTimer = setInterval(step, 2600)
+}
 
 const dynLayer = ref(null)
 const DYN_KEY = { 魏晋: 'dongjin', 唐: 'tang', 宋: 'song' }
@@ -301,6 +354,10 @@ const cnNo = (n) => cnNum(n) + '\u2002'
       <button class="cbtn" title="放大" @click="zoomAt(vb.x + vb.w / 2, vb.y + vb.h / 2, 1.5)" data-test="zoom-in">＋</button>
       <button class="cbtn" title="缩小" @click="zoomAt(vb.x + vb.w / 2, vb.y + vb.h / 2, 1 / 1.5)" data-test="zoom-out">－</button>
       <button class="cbtn" title="复位" @click="resetView()" data-test="zoom-reset">⌂</button>
+      <button class="cbtn wide" :class="{ on: playing }" title="按时间顺序逐站回放"
+              @click="playing ? stopPlayback() : startPlayback()" data-test="journey-play">
+        {{ playing ? '⏸ 停止回放' : '▶ 生涯回放' }}
+      </button>
       <button v-if="dynLayer" class="cbtn wide" :class="{ on: dynOn }"
               :title="`${dynLayer.title}常显`" @click="dynOn = !dynOn" data-test="dyn-toggle">
         {{ dynLayer.title }}

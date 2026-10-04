@@ -400,3 +400,39 @@ a { color: var(--primary-2); text-decoration: none; }
 }
 .modal-title { font-size: 17px; font-weight: 600; margin: 0 0 18px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* ========== 夜读模式：墨青底、月白字、烛光暖金 ========== */
+[data-theme='dark'] {
+  --bg: #15181d;
+  --bg-soft: #1b1f26;
+  --panel: #1d222a;
+  --card: #20252e;
+  --card-hover: #262c36;
+  --border: rgba(214, 205, 180, 0.14);
+  --border-strong: rgba(214, 205, 180, 0.28);
+  --text: #ded7c6;
+  --text-2: #a9a392;
+  --text-3: #756f60;
+  --primary: #7fa588;
+  --primary-2: #93b89c;
+  --accent: #d3a63f;
+  --seal: #c4583f;
+  --ink: #d8d2c4;
+  --grad: linear-gradient(135deg, #4e7a5e 0%, #35604a 100%);
+  --danger: #d98a7a;
+  --success: #7fa588;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+[data-theme='dark'] body::before {
+  background:
+    radial-gradient(1200px 600px at 20% 0%, rgba(78, 96, 120, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 88% 6%, rgba(90, 128, 104, 0.1), transparent 55%),
+    radial-gradient(900px 500px at 90% 100%, rgba(120, 110, 80, 0.12), transparent 55%);
+}
+[data-theme='dark'] body::after { opacity: 0.25; }
+[data-theme='dark'] ::-webkit-scrollbar-thumb { background: #3a414c; }
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover { background: #4a525f; }
+[data-theme='dark'] ::selection { background: rgba(127, 165, 136, 0.3); }
+/* 地图与纸质感组件在夜读下的适配 */
+[data-theme='dark'] .map { filter: brightness(0.82) contrast(1.02); }
