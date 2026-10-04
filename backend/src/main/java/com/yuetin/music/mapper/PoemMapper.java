@@ -4,13 +4,15 @@ import com.yuetin.music.entity.Poem;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 public interface PoemMapper {
 
     /** 诗选：朝代/情绪/关键词（题名、诗人名、诗行内容）可组合筛选 */
     List<Poem> search(@Param("dynasty") String dynasty,
                       @Param("mood") String mood,
-                      @Param("keyword") String keyword);
+                      @Param("keyword") String keyword,
+                      @Param("kwShort") boolean kwShort);
 
     Poem findById(@Param("id") Long id);
 
@@ -27,13 +29,15 @@ public interface PoemMapper {
                           @Param("mood") String mood,
                           @Param("keyword") String keyword,
                           @Param("tier") Integer tier,
+                          @Param("kwShort") boolean kwShort,
                           @Param("offset") long offset,
                           @Param("limit") int limit);
 
     long countSearch(@Param("dynasty") String dynasty,
                      @Param("mood") String mood,
                      @Param("keyword") String keyword,
-                     @Param("tier") Integer tier);
+                     @Param("tier") Integer tier,
+                     @Param("kwShort") boolean kwShort);
 
     /** 精选层数量（今日/随机一诗只在精选层轮换） */
     long countCurated();
@@ -42,4 +46,13 @@ public interface PoemMapper {
 
     /** 心境筛选项（库端去重） */
     List<String> distinctMoods();
+
+    /** 飞花令：含令字诗行总数 */
+    long countLinesWithChar(@Param("ch") String ch);
+
+    /** 飞花令：随机偏移取一条含令字诗 */
+    Map<String, Object> findLineWithChar(@Param("ch") String ch, @Param("offset") long offset);
+
+    /** 飞花令：校验对句是否存在（去标点包含匹配） */
+    long countLineExists(@Param("line") String line);
 }

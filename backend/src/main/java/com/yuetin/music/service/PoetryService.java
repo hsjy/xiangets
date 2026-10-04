@@ -28,7 +28,7 @@ public class PoetryService {
 
     /** 诗选：朝代/情绪/关键词自由组合。 */
     public List<Poem> listPoems(String dynasty, String mood, String keyword) {
-        return poemMapper.search(blank(dynasty), blank(mood), blank(keyword));
+        return poemMapper.search(blank(dynasty), blank(mood), blank(keyword), false);
     }
 
     /** 诗选分页（语料库全量浏览用）；tier 为空表示全部层级。 */
@@ -36,9 +36,10 @@ public class PoetryService {
                                          Integer page, Integer size, Integer tier) {
         int p = Math.max(1, page == null ? 1 : page);
         int s = Math.min(100, Math.max(1, size == null ? 48 : size));
-        long total = poemMapper.countSearch(blank(dynasty), blank(mood), blank(keyword), tier);
+        boolean kwShort = blank(keyword) != null && blank(keyword).length() < 2;
+        long total = poemMapper.countSearch(blank(dynasty), blank(mood), blank(keyword), tier, kwShort);
         List<Poem> list = total == 0 ? List.of()
-                : poemMapper.pageSearch(blank(dynasty), blank(mood), blank(keyword), tier,
+                : poemMapper.pageSearch(blank(dynasty), blank(mood), blank(keyword), tier, kwShort,
                         (long) (p - 1) * s, s);
         Map<String, Object> data = new HashMap<>();
         data.put("list", list);

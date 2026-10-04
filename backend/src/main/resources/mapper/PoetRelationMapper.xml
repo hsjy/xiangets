@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.PoetRelationMapper">
+
+    <select id="findByPoet" resultType="map">
+        SELECT r.related_id   AS relatedId,
+               p.name         AS relatedName,
+               p.title        AS relatedTitle,
+               p.dynasty      AS relatedDynasty,
+               r.rel_type     AS relType,
+               r.note         AS note
+        FROM poet_relation r
+        JOIN poet p ON p.id = r.related_id
+        WHERE r.poet_id = #{poetId}
+        ORDER BY r.id ASC
+    </select>
+</mapper>

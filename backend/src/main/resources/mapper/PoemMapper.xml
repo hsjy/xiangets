@@ -26,10 +26,20 @@
             <if test="dynasty != null and dynasty != ''">AND m.dynasty = #{dynasty}</if>
             <if test="mood != null and mood != ''">AND m.mood = #{mood}</if>
             <if test="keyword != null and keyword != ''">
-                AND (m.title LIKE CONCAT('%', #{keyword}, '%')
-                     OR m.subtitle LIKE CONCAT('%', #{keyword}, '%')
-                     OR m.paragraphs LIKE CONCAT('%', #{keyword}, '%')
-                     OR p.name LIKE CONCAT('%', #{keyword}, '%'))
+                <choose>
+                    <when test="kwShort">
+                        AND (m.title LIKE CONCAT('%', #{keyword}, '%')
+                             OR m.subtitle LIKE CONCAT('%', #{keyword}, '%')
+                             OR m.paragraphs LIKE CONCAT('%', #{keyword}, '%')
+                             OR p.name LIKE CONCAT('%', #{keyword}, '%'))
+                    </when>
+                    <otherwise>
+                        AND (MATCH(m.title, m.subtitle, m.paragraphs)
+                             AGAINST(#{keyword} IN BOOLEAN MODE)
+                             OR m.poet_id IN (SELECT id FROM poet
+                                              WHERE name LIKE CONCAT('%', #{keyword}, '%')))
+                    </otherwise>
+                </choose>
             </if>
         </where>
         ORDER BY m.dynasty ASC, m.poet_id ASC, m.id ASC
@@ -63,10 +73,20 @@
             <if test="mood != null and mood != ''">AND m.mood = #{mood}</if>
             <if test="tier != null">AND m.tier = #{tier}</if>
             <if test="keyword != null and keyword != ''">
-                AND (m.title LIKE CONCAT('%', #{keyword}, '%')
-                     OR m.subtitle LIKE CONCAT('%', #{keyword}, '%')
-                     OR m.paragraphs LIKE CONCAT('%', #{keyword}, '%')
-                     OR p.name LIKE CONCAT('%', #{keyword}, '%'))
+                <choose>
+                    <when test="kwShort">
+                        AND (m.title LIKE CONCAT('%', #{keyword}, '%')
+                             OR m.subtitle LIKE CONCAT('%', #{keyword}, '%')
+                             OR m.paragraphs LIKE CONCAT('%', #{keyword}, '%')
+                             OR p.name LIKE CONCAT('%', #{keyword}, '%'))
+                    </when>
+                    <otherwise>
+                        AND (MATCH(m.title, m.subtitle, m.paragraphs)
+                             AGAINST(#{keyword} IN BOOLEAN MODE)
+                             OR m.poet_id IN (SELECT id FROM poet
+                                              WHERE name LIKE CONCAT('%', #{keyword}, '%')))
+                    </otherwise>
+                </choose>
             </if>
         </where>
     </sql>
@@ -106,5 +126,27 @@
         SELECT DISTINCT mood FROM poem
         WHERE mood IS NOT NULL AND mood != ''
         ORDER BY mood
+    </select>
+
+    <!-- 飞花令：含令字诗行两步随机 -->
+    <select id="countLinesWithChar" resultType="long">
+        SELECT COUNT(*) FROM poem WHERE paragraphs LIKE CONCAT('%', #{ch}, '%')
+    </select>
+
+    <select id="findLineWithChar" resultType="map">
+        SELECT m.id AS poemId, m.title AS title, m.dynasty AS dynasty,
+               p.name AS poetName, m.paragraphs AS line
+        FROM poem m
+        JOIN poet p ON p.id = m.poet_id
+        WHERE m.paragraphs LIKE CONCAT('%', #{ch}, '%')
+        LIMIT 1 OFFSET #{offset}
+    </select>
+
+    <!-- 飞花令：校验某句是否存在于诗库（去标点后包含匹配） -->
+    <select id="countLineExists" resultType="long">
+        SELECT COUNT(*) FROM poem
+        WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(paragraphs, '，', ''), '。', ''), '？', ''), '！', ''), '、', '')
+              LIKE CONCAT('%', #{line}, '%')
+        LIMIT 1
     </select>
 </mapper>

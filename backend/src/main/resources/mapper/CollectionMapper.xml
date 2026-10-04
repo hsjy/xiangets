@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.CollectionMapper">
+
+    <select id="list" resultType="PoemCollection">
+        SELECT c.*,
+               (SELECT COUNT(*) FROM collection_poem cp WHERE cp.collection_id = c.id) AS poem_count
+        FROM collection c
+        ORDER BY c.sort ASC, c.id ASC
+    </select>
+
+    <select id="findById" resultType="PoemCollection">
+        SELECT c.*,
+               (SELECT COUNT(*) FROM collection_poem cp WHERE cp.collection_id = c.id) AS poem_count
+        FROM collection c
+        WHERE c.id = #{id}
+    </select>
+
+    <select id="findPoems" resultType="Poem">
+        SELECT m.id, m.title, m.subtitle, m.poet_id, m.dynasty, m.genre, m.paragraphs,
+               m.mood, m.famous_line, m.tier, m.create_time,
+               p.name AS poet_name, p.years AS poet_years, p.title AS poet_title
+        FROM collection_poem cp
+        JOIN poem m ON m.id = cp.poem_id
+        JOIN poet p ON p.id = m.poet_id
+        WHERE cp.collection_id = #{id}
+        ORDER BY cp.sort_no ASC
+    </select>
+</mapper>
