@@ -241,12 +241,12 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 
             <div class="actions">
               <button class="btn compose" :disabled="polling" @click="compose" data-test="ai-compose">
-                {{ polling ? '谱曲中…' : aiJob?.status === 'done' ? '再谱一曲' : '为此诗谱曲' }}
+                {{ polling ? '谱曲中…' : aiJob?.status === 'done' ? '✦ 再谱一曲' : '✦ 为此诗谱曲' }}
               </button>
               <button class="btn fav" :class="{ on: favorited }" @click="toggleFav" data-test="poem-fav">
                 {{ favorited ? '✓ 已入书斋' : '收入书斋' }}
               </button>
-              <button class="btn ghost-act" @click="askOpen = true" data-test="poem-ask">问诗</button>
+              <button class="btn ghost-act" @click="askOpen = true" data-test="poem-ask">✦ 问诗</button>
               <button class="btn ghost-act" @click="downloadPoemCard(poem)" data-test="poem-card">制成诗笺</button>
               <button class="btn ghost-act" @click="reciteOpen = true" data-test="poem-recite">试背</button>
             </div>
@@ -350,17 +350,16 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .jing-grid {
   position: relative;
   display: flex;
-  justify-content: center;      /* 诗与操作区作为整体居中，剩余空间留给两侧 */
   align-items: flex-start;
-  gap: clamp(36px, 5vw, 72px);  /* 诗区与操作区间距恒定，不随诗的长短变化 */
 }
-/* 竖排诗行：宽度随诗的列数收缩 */
+/* 竖排诗行：占据操作区以外的全部空间，诗在其中居中 */
 .scroll-pane {
-  flex: none;
+  flex: 1;
+  min-width: 0;
   display: flex;
+  justify-content: center;      /* 诗在此区域内动态居中 */
   gap: 16px;
   align-items: flex-start;
-  max-width: min(62%, 780px);
   overflow-x: auto;             /* 超长词牌（如水调歌头）横向滚动兜底 */
   padding-bottom: 6px;
 }
@@ -394,8 +393,8 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 
 .side-pane {
   flex: none;
-  width: 380px;
-  max-width: 42%;
+  width: fit-content;
+  max-width: 46%;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -442,9 +441,8 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .t-name { flex: 1; font-size: 13px; }
 .t-dur { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
-.actions { display: flex; gap: 8px; align-items: center; }
-.actions .btn { padding: 7px 10px; font-size: 12.5px; gap: 4px; border-radius: 7px; white-space: nowrap; }
-.compose { background: var(--accent); color: #fbf6ea; border: none; }
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: nowrap; }
+.compose { background: var(--accent); color: #fbf6ea; border: 1px solid var(--accent); }
 .compose:hover:not(:disabled) { filter: brightness(1.1); }
 .compose:disabled { opacity: 0.7; }
 .ghost-act { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
