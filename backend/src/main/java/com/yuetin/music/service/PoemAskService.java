@@ -81,7 +81,7 @@ public class PoemAskService {
                 String role = "user".equalsIgnoreCase(turn.get("role")) ? "user" : "assistant";
                 String content = turn.get("content");
                 if (content != null && !content.isBlank() && i++ < 6) {
-                    messages.add(Map.of(role, content));
+                    messages.add(Map.of("role", role, "content", content));
                 }
             }
         }
@@ -108,7 +108,7 @@ public class PoemAskService {
         try {
             HttpResponse<String> resp = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() != 200) {
-                throw new IllegalStateException("DeepSeek 返回 " + resp.statusCode());
+                throw new IllegalStateException("DeepSeek 返回 " + resp.statusCode() + ": " + resp.body().substring(0, Math.min(400, resp.body().length())));
             }
             JsonNode root = mapper.readTree(resp.body());
             String answer = root.path("choices").path(0).path("message").path("content").asText("").trim();
