@@ -1,0 +1,87 @@
+# ============================================================
+# 弦歌 · 生产部署编排（docker compose）
+#
+# 三个容器各司其职：
+#   web      → nginx：托管前端静态文件 + 反向代理 /api + 直出音频
+#   backend  → SpringBoot：全部业务接口与 AI 编排
+#   mysql    → 数据库（数据落在命名卷，容器重建不丢）
+#
+# 使用：
+#   cp .env.example .env   # 填好密钥
+#   docker compose up -d --build
+#
+# 本地预演与线上部署用的是同一份文件——这正是容器化的意义：
+# 「在我机器上能跑」和「在服务器上能跑」是同一件事。
+# ============================================================
+name: xiangets
+
+services:
+  # ---------- 数据库 ----------
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 root 密码}
+      MYSQL_DATABASE: ${MYSQL_DB:-yuetin}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql      # 数据卷：容器删除数据仍在
+    healthcheck:                        # backend 等 它就绪才启动，避免连库失败
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    # 数据库不对外暴露端口（只在容器网络内被 backend 访问），
+    # 需要本机调试时临时解开下面两行，并务必绑定 127.0.0.1
+    # ports:
+    #   - '127.0.0.1:3306:3306'
+
+  # ---------- 后端 ----------
+  backend:
+    build:
+      context: ..                       # 构建上下文是项目根（要打 backend/ 源码与音频）
+      dockerfile: deploy/Dockerfile.backend
+    environment:
+      MYSQL_HOST: mysql                 # 容器网络内用服务名互访，不走公网
+      MYSQL_PORT: '3306'
+      MYSQL_DB: ${MYSQL_DB:-yuetin}
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?请在 .env 中生成 JWT 密钥}
+      AI_DEEPSEEK_KEY: ${DEEPSEEK_API_KEY:-}
+      # AI_ACESTEP_URL: http://host.docker.internal:8000/generate   # 谱曲边车跑在宿主机时（Mac/Win）解开
+      TZ: Asia/Shanghai
+    volumes:
+      - audio:/app/audio                # 音频卷：与 web 共享，nginx 直出
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'timeout 2 bash -c "</dev/tcp/localhost/8080" || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  # ---------- 入口：静态前端 + 反向代理 ----------
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+    ports:
+      - '80:80'                         # 生产加 443:443 与证书卷（见 nginx.conf 内注释）
+    volumes:
+      - audio:/srv/audio:ro             # 只读共享后端生成的音频
+      # - ./certs:/etc/nginx/certs:ro  # 上 HTTPS 时解开
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  audio:

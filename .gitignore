@@ -34,3 +34,7 @@ backend/mysql-data/
 backend/audio/*
 !backend/audio/.gitkeep
 docs/.deepseek_key
+
+# 部署密钥与证书
+deploy/.env
+deploy/certs/

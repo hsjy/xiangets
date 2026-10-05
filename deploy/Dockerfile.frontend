@@ -1,0 +1,18 @@
+# ============================================================
+# 前端镜像：Node 构建静态文件 → nginx 托管并兼任反向代理
+# 注意 --mode real：不带这个参数构建出来的是 mock 演示站！
+# ============================================================
+
+# ---- 构建段 ----
+FROM node:20-alpine AS build
+WORKDIR /src
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build -- --mode real
+
+# ---- 运行段 ----
+FROM nginx:1.27-alpine
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /src/dist /usr/share/nginx/html
+EXPOSE 80

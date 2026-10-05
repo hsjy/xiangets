@@ -1,0 +1,32 @@
+# ============================================================
+# 后端镜像：两段构建（multi-stage）
+#   第一段用带 Maven 的镜像编译出 jar
+#   第二段只把 jar 放进精简的 JRE 运行时——最终镜像小、攻击面小
+# ============================================================
+
+# ---- 构建段 ----
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /src
+
+# 国内加速：使用阿里云 Maven 镜像（海外服务器可删掉这行 COPY 与 -s 参数）
+COPY deploy/mvn-settings.xml /root/.m2/settings.xml
+
+# 先只拷 pom 下载依赖——源码改动时这一层走缓存，重建更快
+COPY backend/pom.xml .
+RUN mvn -q dependency:go-offline
+
+COPY backend/src ./src
+RUN mvn -q package -DskipTests
+
+# ---- 运行段 ----
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+
+COPY --from=build /src/target/*.jar app.jar
+# 朗诵/配乐音频随镜像分发（预生成的 AI 曲也在 generated/ 下）
+COPY backend/audio /app/audio
+
+ENV TZ=Asia/Shanghai \
+    AUDIO_DIR=/app/audio
+EXPOSE 8080
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
