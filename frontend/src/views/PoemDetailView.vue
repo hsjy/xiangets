@@ -356,11 +356,20 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .jing-grid {
   position: relative;
   display: flex;
-  gap: 40px;
-  justify-content: space-between;
+  justify-content: center;      /* 诗与操作区作为整体居中，剩余空间留给两侧 */
+  align-items: flex-start;
+  gap: clamp(36px, 5vw, 72px);  /* 诗区与操作区间距恒定，不随诗的长短变化 */
 }
-/* 竖排诗行 */
-.scroll-pane { display: flex; gap: 16px; align-items: flex-start; }
+/* 竖排诗行：宽度随诗的列数收缩 */
+.scroll-pane {
+  flex: none;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  max-width: min(62%, 780px);
+  overflow-x: auto;             /* 超长词牌（如水调歌头）横向滚动兜底 */
+  padding-bottom: 6px;
+}
 .poem-vertical {
   writing-mode: vertical-rl;
   text-orientation: upright;
@@ -389,7 +398,14 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 }
 .v-dyn { font-size: 11px; color: var(--text-3); }
 
-.side-pane { max-width: 380px; display: flex; flex-direction: column; gap: 16px; }
+.side-pane {
+  flex: none;
+  width: 380px;
+  max-width: 42%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .p-title { margin: 0; font-size: 30px; letter-spacing: 4px; line-height: 1.4; }
 .p-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13.5px; }
 .poet-link { color: var(--primary-2); }
