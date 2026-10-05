@@ -241,21 +241,15 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 
             <div class="actions">
               <button class="btn compose" :disabled="polling" @click="compose" data-test="ai-compose">
-                {{ polling ? '谱曲中…' : aiJob?.status === 'done' ? '✦ 再谱一曲' : '✦ 为此诗谱曲' }}
+                {{ polling ? '谱曲中…' : aiJob?.status === 'done' ? '再谱一曲' : '为此诗谱曲' }}
               </button>
               <button class="btn fav" :class="{ on: favorited }" @click="toggleFav" data-test="poem-fav">
                 {{ favorited ? '✓ 已入书斋' : '收入书斋' }}
               </button>
-              <button class="btn ghost-act" @click="askOpen = true" data-test="poem-ask">✦ 问诗</button>
+              <button class="btn ghost-act" @click="askOpen = true" data-test="poem-ask">问诗</button>
               <button class="btn ghost-act" @click="downloadPoemCard(poem)" data-test="poem-card">制成诗笺</button>
               <button class="btn ghost-act" @click="reciteOpen = true" data-test="poem-recite">试背</button>
             </div>
-            <p class="compose-note" v-if="aiJob">
-              {{ aiJob.status === 'done' ? `已按「${poem.mood}」谱成 · ${aiJob.provider === 'acestep' ? 'AI 读诗实时生成' : '本地预生成兜底'}` : aiJob.status === 'failed' ? aiJob.error : 'AI 正在读诗…' }}
-            </p>
-            <p class="compose-prompt" v-if="aiJob?.status === 'done'" :title="aiJob.prompt">
-              ✧ {{ aiJob.prompt }}
-            </p>
           </div>
         </div>
       </section>
@@ -448,24 +442,13 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .t-name { flex: 1; font-size: 13px; }
 .t-dur { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
-.actions { display: flex; flex-wrap: wrap; gap: 10px; row-gap: 10px; align-items: center; }
+.actions { display: flex; gap: 8px; align-items: center; }
+.actions .btn { padding: 7px 10px; font-size: 12.5px; gap: 4px; border-radius: 7px; white-space: nowrap; }
 .compose { background: var(--accent); color: #fbf6ea; border: none; }
 .compose:hover:not(:disabled) { filter: brightness(1.1); }
 .compose:disabled { opacity: 0.7; }
-.compose-note { margin: -6px 0 0; font-size: 12px; color: var(--text-3); }
 .ghost-act { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
 .ghost-act:hover { border-color: var(--primary); color: var(--primary); }
-.compose-prompt {
-  margin: 2px 0 0;
-  font-size: 11.5px;
-  line-height: 1.7;
-  color: var(--text-3);
-  font-style: italic;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 .fav { border: 1px solid var(--border-strong); background: var(--card); color: var(--text-2); }
 .fav:hover { border-color: var(--seal); color: var(--seal); }
 .fav.on { background: var(--seal); border-color: var(--seal); color: #fbf6ea; }
