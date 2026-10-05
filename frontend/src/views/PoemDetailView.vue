@@ -432,7 +432,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .t-name { flex: 1; font-size: 13px; }
 .t-dur { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
-.actions { display: flex; gap: 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; row-gap: 10px; align-items: center; }
 .compose { background: var(--accent); color: #fbf6ea; border: none; }
 .compose:hover:not(:disabled) { filter: brightness(1.1); }
 .compose:disabled { opacity: 0.7; }
