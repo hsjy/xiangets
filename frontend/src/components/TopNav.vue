@@ -101,7 +101,7 @@ onBeforeUnmount(() => {
 
     <div class="right" ref="menuRef">
       <button class="theme-btn" :title="night ? '切换到日间' : '切换到夜读'" @click="toggleNight" data-test="night-toggle">
-        {{ night ? '☾' : '☀' }}
+        {{ night ? '☀' : '☾' }}
       </button>
       <template v-if="userStore.isLoggedIn">
         <button class="user-chip" @click.stop="menuOpen = !menuOpen" data-test="user-menu">
