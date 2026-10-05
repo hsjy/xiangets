@@ -120,6 +120,9 @@ onBeforeUnmount(() => {
           <button class="menu-item" @click="menuOpen = false; router.push('/profile')">
             <Icon name="user" :size="15" /> 个人资料
           </button>
+          <button class="menu-item" v-if="userStore.isAdmin" @click="menuOpen = false; router.push('/admin')" data-test="go-admin">
+            <Icon name="list" :size="15" /> 管理后台
+          </button>
           <button class="menu-item danger" @click="onLogout" data-test="logout">
             <Icon name="logout" :size="15" /> 退出登录
           </button>

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,8 +26,10 @@ public class UserController {
 
     private final UserMapper userMapper;
 
+    /** 用户管理（管理员）：全站用户列表。 */
     @GetMapping("/user/list")
     public Result<List<Map<String, Object>>> list() {
+        requireAdmin();
         List<User> users = userMapper.search(null);
         List<Map<String, Object>> out = new java.util.ArrayList<>();
         for (User u : users) {
@@ -96,6 +99,57 @@ public class UserController {
         }
         if (userMapper.findById(id) == null) throw BizException.notFound("用户不存在");
         userMapper.deleteById(id);
+        return Result.ok();
+    }
+
+    /* ---------------- 管理员用户运维 ---------------- */
+
+    private void requireAdmin() {
+        CurrentUser current = UserContext.get();
+        if (current == null) throw BizException.unauthorized("登录已过期，请重新登录");
+        if (!current.isAdmin()) throw BizException.forbidden("需要管理员身份");
+    }
+
+    /** 设定角色：admin/user。不能改动自己的角色（防自锁）。 */
+    @PutMapping("/user/role/{id}")
+    public Result<Void> setRole(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireAdmin();
+        String role = String.valueOf(body.getOrDefault("role", ""));
+        if (!role.equals("admin") && !role.equals("user")) throw BizException.badRequest("非法角色");
+        User u = userMapper.findById(id);
+        if (u == null) throw BizException.notFound("用户不存在");
+        if (u.getId().equals(UserContext.id())) throw BizException.badRequest("不能修改自己的角色");
+        u.setRole(role);
+        userMapper.update(u);
+        return Result.ok();
+    }
+
+    /** 管理员重置用户密码（无需旧密码，重置后解除锁定）。 */
+    @PostMapping("/user/reset-pwd/{id}")
+    public Result<Void> resetUserPwd(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireAdmin();
+        String newPwd = String.valueOf(body.getOrDefault("newPassword", ""));
+        if (!java.util.regex.Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,}$").matcher(newPwd).matches()) {
+            throw BizException.badRequest("新密码需至少 8 位，且同时包含字母和数字");
+        }
+        User u = userMapper.findById(id);
+        if (u == null) throw BizException.notFound("用户不存在");
+        u.setPassword(PasswordUtil.encode(newPwd));
+        u.setFailedCount(0);
+        u.setLockedUntil(null);
+        userMapper.update(u);
+        return Result.ok();
+    }
+
+    /** 解除登录锁定。 */
+    @PostMapping("/user/unlock/{id}")
+    public Result<Void> unlock(@PathVariable Long id) {
+        requireAdmin();
+        User u = userMapper.findById(id);
+        if (u == null) throw BizException.notFound("用户不存在");
+        u.setFailedCount(0);
+        u.setLockedUntil(null);
+        userMapper.update(u);
         return Result.ok();
     }
 }

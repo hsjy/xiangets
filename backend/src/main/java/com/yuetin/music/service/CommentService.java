@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -45,11 +46,26 @@ public class CommentService {
 
     public void delete(Long id) {
         Long uid = requireLogin();
-        // WHERE 带 user_id：只能删自己的评论，管理员亦然（与 mock 层一致）
+        // 管理员可删除任意感悟；普通用户只能删自己的
+        if (isAdmin()) {
+            commentMapper.deleteById(id);
+            return;
+        }
         int rows = commentMapper.deleteByIdAndUser(id, uid);
         if (rows == 0) {
-            throw BizException.forbidden("只能删除自己的评论");
+            throw BizException.forbidden("只能删除自己的感悟");
         }
+    }
+
+    /** 全站感悟（管理后台用）：带用户名与诗题。 */
+    public List<Map<String, Object>> allForAdmin() {
+        if (!isAdmin()) throw BizException.forbidden("需要管理员身份");
+        return commentMapper.findAllWithMeta();
+    }
+
+    private boolean isAdmin() {
+        var cu = UserContext.get();
+        return cu != null && cu.isAdmin();
     }
 
     private String currentName() {

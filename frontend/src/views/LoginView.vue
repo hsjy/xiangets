@@ -221,7 +221,7 @@ function fillDemo() {
       </form>
 
       <div class="demo-tip">
-        <p>演示账号：<code>demo</code> / <code>123456</code>（管理员 <code>admin</code> / <code>admin123</code>）</p>
+        <p>演示账号：<code>demo</code> / <code>demo123456</code>（管理员 <code>admin</code> / <code>admin123</code>）</p>
         <button class="btn btn-ghost btn-sm" @click="fillDemo">一键填入演示账号</button>
       </div>
     </div>

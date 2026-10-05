@@ -170,8 +170,54 @@ export async function handle(ctx) {
     /* ===== 用户管理 ===== */
     if (seg[0] === 'user') {
       if (method === 'GET' && seg[1] === 'list') {
+        const { user, error } = await requireAuth(ctx)
+        if (error) return error
+        const gate = requireAdmin(user)
+        if (gate) return gate
         const db = loadDB()
-        return ok(db.user.map(publicUser))
+        return ok(db.user.map((u) => ({ ...publicUser(u),
+          role: u.role, lockedUntil: u.lockedUntil || null })))
+      }
+      if (method === 'PUT' && seg[1] === 'role' && seg[2]) {
+        const { user, error } = await requireAuth(ctx)
+        if (error) return error
+        const gate = requireAdmin(user)
+        if (gate) return gate
+        const db = loadDB()
+        const u = db.user.find((x) => x.id === Number(seg[2]))
+        if (!u) return fail(404, '用户不存在')
+        if (u.id === user.id) return fail(400, '不能修改自己的角色')
+        u.role = ctx.body?.role === 'admin' ? 'admin' : 'user'
+        saveDB(db)
+        return ok()
+      }
+      if (method === 'POST' && seg[1] === 'reset-pwd' && seg[2]) {
+        const { user, error } = await requireAuth(ctx)
+        if (error) return error
+        const gate = requireAdmin(user)
+        if (gate) return gate
+        const db = loadDB()
+        const u = db.user.find((x) => x.id === Number(seg[2]))
+        if (!u) return fail(404, '用户不存在')
+        if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(ctx.body?.newPassword || '')) {
+          return fail(400, '新密码需至少 8 位，且同时包含字母和数字')
+        }
+        u.password = ctx.body.newPassword
+        u.lockedUntil = null
+        saveDB(db)
+        return ok()
+      }
+      if (method === 'POST' && seg[1] === 'unlock' && seg[2]) {
+        const { user, error } = await requireAuth(ctx)
+        if (error) return error
+        const gate = requireAdmin(user)
+        if (gate) return gate
+        const db = loadDB()
+        const u = db.user.find((x) => x.id === Number(seg[2]))
+        if (!u) return fail(404, '用户不存在')
+        u.lockedUntil = null
+        saveDB(db)
+        return ok()
       }
       if (method === 'GET' && seg[1] === 'detail') {
         const db = loadDB()
@@ -558,7 +604,7 @@ export async function handle(ctx) {
         return tx((db) => {
           const idx = db.comment.findIndex((c) => c.id === Number(seg[2]))
           if (idx === -1) return fail(404, '评论不存在')
-          if (db.comment[idx].userId !== user.id && user.role !== 'admin') return fail(403, '只能删除自己的评论')
+          if (db.comment[idx].userId !== user.id && user.role !== 'admin') return fail(403, '只能删除自己的感悟')
           db.comment.splice(idx, 1)
           return ok()
         })
@@ -640,6 +686,22 @@ export async function handle(ctx) {
         return ok({ ok: true })
       }
     }
+    if (seg[0] === 'poem' && seg[1] === 'comment' && seg[2] === 'all') {
+      const { user, error } = await requireAuth(ctx)
+      if (error) return error
+      const gate = requireAdmin(user)
+      if (gate) return gate
+      const db = loadDB()
+      const rows = db.comment.map((c) => {
+        const u = db.user.find((x) => x.id === c.userId) || {}
+        const m = POEMS.find((x) => x.id === c.poemId) || {}
+        return { id: c.id, content: c.content, createTime: c.createTime,
+                 username: u.username || '', userName: u.name || '',
+                 poemId: c.poemId, poemTitle: m.title || '' }
+      }).sort((a, b) => String(b.createTime).localeCompare(String(a.createTime)))
+      return ok(rows)
+    }
+
     if (seg[0] === 'poem' && seg[1] === 'ask' && seg[2]) {
       return ok({ answer: '（mock 模式不接入 DeepSeek）此诗的妙处，待连上后端后再与先生细论。' })
     }

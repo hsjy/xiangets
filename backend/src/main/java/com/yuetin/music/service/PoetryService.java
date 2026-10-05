@@ -24,6 +24,7 @@ public class PoetryService {
     private final PoemMapper poemMapper;
     private final PoetMapper poetMapper;
     private final CommentMapper commentMapper;
+    private final com.yuetin.music.service.CommentService commentService;
     private final PoemFavoriteMapper poemFavoriteMapper;
 
     /** 诗选：朝代/情绪/关键词自由组合。 */
@@ -175,6 +176,11 @@ public class PoetryService {
         commentMapper.insertPoem(c);
         c.setUsername(UserContext.get() == null ? null : UserContext.get().getUsername());
         return c;
+    }
+
+    /** 全站感悟（管理后台）。 */
+    public List<Map<String, Object>> allCommentsForAdmin() {
+        return commentService.allForAdmin();
     }
 
     /** 我的感悟（书斋）。 */

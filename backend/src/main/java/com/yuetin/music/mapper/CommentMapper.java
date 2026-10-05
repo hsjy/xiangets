@@ -4,6 +4,7 @@ import com.yuetin.music.entity.Comment;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 public interface CommentMapper {
 
@@ -21,4 +22,9 @@ public interface CommentMapper {
 
     /** 仅允许删除自己的评论/感悟，返回受影响行数供上层判断权限。 */
     int deleteByIdAndUser(@Param("id") Long id, @Param("userId") Long userId);
+
+    int deleteById(@Param("id") Long id);
+
+    /** 全站感悟（管理后台）：带用户名与诗题 */
+    List<Map<String, Object>> findAllWithMeta();
 }

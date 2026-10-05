@@ -118,6 +118,12 @@ public class PoetryController {
     }
 
     /** 书斋：我的感悟。 */
+    /** 全站感悟（管理后台）。 */
+    @GetMapping("/poem/comment/all")
+    public Result<List<Map<String, Object>>> allComments() {
+        return Result.ok(poetryService.allCommentsForAdmin());
+    }
+
     @GetMapping("/poem/comment/mine")
     public Result<List<com.yuetin.music.entity.Comment>> myComments() {
         return Result.ok(poetryService.myComments());

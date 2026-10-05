@@ -43,4 +43,18 @@
     <delete id="deleteByIdAndUser">
         DELETE FROM comment WHERE id = #{id} AND user_id = #{userId}
     </delete>
+
+    <delete id="deleteById">
+        DELETE FROM comment WHERE id = #{id}
+    </delete>
+
+    <select id="findAllWithMeta" resultType="map">
+        SELECT c.id, c.content, c.create_time AS createTime,
+               u.username, u.name AS userName,
+               m.title AS poemTitle, m.id AS poemId
+        FROM comment c
+        JOIN user u ON u.id = c.user_id
+        LEFT JOIN poem m ON m.id = c.poem_id
+        ORDER BY c.create_time DESC
+    </select>
 </mapper>

@@ -17,6 +17,7 @@ const routes = [
   { path: '/feihua', name: 'feihua', component: () => import('../views/FeihuaView.vue'), meta: { title: '飞花令' } },
   { path: '/study', name: 'study', component: () => import('../views/StudyView.vue'), meta: { title: '书斋', requiresAuth: true } },
   { path: '/profile', name: 'profile', component: () => import('../views/ProfileView.vue'), meta: { title: '个人资料', requiresAuth: true } },
+  { path: '/admin', name: 'admin', component: () => import('../views/AdminView.vue'), meta: { title: '管理后台', requiresAuth: true, requiresAdmin: true } },
 
   /* 旧音乐站路由 → 新 IA 重定向 */
   { path: '/discover', redirect: '/today' },
@@ -40,6 +41,9 @@ const router = createRouter({
 router.beforeEach((to) => {
   if (to.meta.requiresAuth && !useUserStore().isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresAdmin && !useUserStore().isAdmin) {
+    return { name: 'home' }
   }
   document.title = to.meta.title ? to.meta.title + ' · 弦歌' : '弦歌 · 诗乐雅集'
 })
