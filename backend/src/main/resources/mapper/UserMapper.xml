@@ -4,7 +4,7 @@
 <mapper namespace="com.yuetin.music.mapper.UserMapper">
 
     <sql id="cols">
-        id, username, password, name, avatar, email, phone, sex, birth, intro, role, create_time
+        id, username, password, name, avatar, email, phone, sex, birth, intro, role, create_time, pwd_question, pwd_answer, failed_count, locked_until
     </sql>
 
     <select id="findById" resultType="User">
@@ -27,9 +27,11 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO `user` (username, password, name, avatar, email, phone, sex, birth, intro, role, create_time)
+        INSERT INTO `user` (username, password, name, avatar, email, phone, sex, birth, intro, role,
+                            pwd_question, pwd_answer, failed_count, create_time)
         VALUES (#{username}, #{password}, #{name}, #{avatar}, #{email}, #{phone},
-                #{sex}, #{birth}, #{intro}, #{role}, NOW())
+                #{sex}, #{birth}, #{intro}, #{role},
+                #{pwdQuestion}, #{pwdAnswer}, 0, NOW())
     </insert>
 
     <update id="update">
@@ -43,6 +45,10 @@
             <if test="birth != null">birth = #{birth},</if>
             <if test="intro != null">intro = #{intro},</if>
             <if test="password != null">password = #{password},</if>
+            <if test="pwdQuestion != null">pwd_question = #{pwdQuestion},</if>
+            <if test="pwdAnswer != null">pwd_answer = #{pwdAnswer},</if>
+            <if test="failedCount != null">failed_count = #{failedCount},</if>
+            <if test="lockedUntil != null">locked_until = #{lockedUntil},</if>
         </set>
         WHERE id = #{id}
     </update>

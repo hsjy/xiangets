@@ -33,6 +33,28 @@ public class AuthController {
         return authService.login(body);
     }
 
+    /** 忘记密码第一步：取密保问题。 */
+    @GetMapping("/pwd/question")
+    public Result<Map<String, Object>> pwdQuestion(@org.springframework.web.bind.annotation.RequestParam String username) {
+        return Result.ok(authService.pwdQuestion(username));
+    }
+
+    /** 忘记密码第二步：密保答案 + 新密码。 */
+    @PostMapping("/pwd/reset")
+    public Result<Map<String, Object>> pwdReset(@RequestBody Map<String, Object> body) {
+        return authService.resetPassword(body);
+    }
+
+    /** 登录态修改密码。 */
+    @PostMapping("/password")
+    public Result<Map<String, Object>> changePassword(@RequestBody Map<String, Object> body) {
+        Long uid = UserContext.id();
+        if (uid == null) throw BizException.unauthorized("请先登录");
+        return authService.changePassword(uid,
+                String.valueOf(body.getOrDefault("oldPassword", "")),
+                String.valueOf(body.getOrDefault("newPassword", "")));
+    }
+
     /** 取当前登录用户信息，用于刷新页面后恢复登录态。 */
     @GetMapping("/me")
     public Result<User> me() {

@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { authApi } from '../api'
 import { useUserStore } from '../stores/user'
 import { toast } from '../utils/toast'
 import { formatDate } from '../utils/format'
@@ -7,6 +8,27 @@ import Icon from '../components/Icon.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 
 const userStore = useUserStore()
+
+/* ---- 修改密码 ---- */
+const pwd = ref({ old: '', next: '', confirm: '' })
+const pwdSaving = ref(false)
+async function changePwd() {
+  if (!pwd.value.old || !pwd.value.next) return toast.error('请填写当前密码与新密码')
+  if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(pwd.value.next)) {
+    return toast.error('新密码需至少 8 位，且同时包含字母和数字')
+  }
+  if (pwd.value.next !== pwd.value.confirm) return toast.error('两次输入的新密码不一致')
+  pwdSaving.value = true
+  try {
+    await authApi.changePassword({ oldPassword: pwd.value.old, newPassword: pwd.value.next })
+    toast.success('密码已更新')
+    pwd.value = { old: '', next: '', confirm: '' }
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    pwdSaving.value = false
+  }
+}
 const form = ref({
   name: userStore.user?.name || '',
   sex: userStore.user?.sex ?? 0,
@@ -83,6 +105,25 @@ async function save() {
         <button class="btn btn-primary" type="submit" :disabled="saving" data-test="profile-save">
           <Icon name="check" :size="15" /> {{ saving ? '保存中…' : '保存修改' }}
         </button>
+      </form>
+
+      <form @submit.prevent="changePwd" class="card pwd-card" data-test="pwd-form">
+        <h3 class="pc-sec">修改密码</h3>
+        <div class="two-col">
+          <div class="form-item">
+            <label class="form-label">当前密码</label>
+            <input v-model="pwd.old" class="input" type="password" autocomplete="current-password" data-test="pwd-old" />
+          </div>
+          <div class="form-item">
+            <label class="form-label">新密码</label>
+            <input v-model="pwd.next" class="input" type="password" placeholder="至少 8 位，含字母和数字" data-test="pwd-new" />
+          </div>
+        </div>
+        <div class="form-item">
+          <label class="form-label">确认新密码</label>
+          <input v-model="pwd.confirm" class="input" type="password" data-test="pwd-confirm" />
+        </div>
+        <button class="btn btn-primary" type="submit" :disabled="pwdSaving">{{ pwdSaving ? '保存中…' : '更新密码' }}</button>
       </form>
     </div>
   </div>

@@ -13,16 +13,23 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const mode = ref('login') // login | register
+const mode = ref('login') // login | register | forgot
 const loading = ref(false)
+const remember = ref(true)
 const form = ref({
   username: '',
   password: '',
   password2: '',
-  name: ''
+  name: '',
+  pwdQuestion: '出生城市',
+  pwdAnswer: ''
 })
 
+// 忘记密码三步：用户名 → 答密保 → 设新密码
+const forgot = ref({ step: 1, username: '', question: '', answer: '', newPassword: '', newPassword2: '' })
+
 const isLogin = computed(() => mode.value === 'login')
+const PWD_RE = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/   // 与后端强度规则一致
 
 function switchMode(m) {
   mode.value = m
@@ -43,22 +50,61 @@ async function onSubmit() {
     if (!USERNAME_RE.test(username.trim())) {
       return toast.error('用户名需为 3-20 位字母、数字或下划线')
     }
-    if (password.length < 6) return toast.error('密码长度至少 6 位')
+    if (!PWD_RE.test(password)) return toast.error('密码需至少 8 位，且同时包含字母和数字')
     if (password !== password2) return toast.error('两次输入的密码不一致')
+    if (!form.value.pwdQuestion || !form.value.pwdAnswer) return toast.error('请设置密保问题与答案')
   }
   loading.value = true
   try {
     if (isLogin.value) {
-      await userStore.login(username.trim(), password)
+      await userStore.login(username.trim(), password, remember.value)
       toast.success('登录成功，欢迎回来！')
       goBack()
     } else {
       // 注册成功后回到登录页：预填用户名，清空密码，由用户主动登录
-      await authApi.register({ username: username.trim(), password, name: name.trim() })
+      await authApi.register({
+        username: username.trim(), password, name: name.trim(),
+        pwdQuestion: form.value.pwdQuestion, pwdAnswer: form.value.pwdAnswer
+      })
       toast.success('注册成功，请使用新账号登录')
       mode.value = 'login'
-      form.value = { username: username.trim(), password: '', password2: '', name: '' }
+      form.value = { username: username.trim(), password: '', password2: '', name: '', pwdQuestion: '出生城市', pwdAnswer: '' }
     }
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+/* ---- 忘记密码 ---- */
+async function forgotStep1() {
+  const u = forgot.value.username.trim()
+  if (!u) return toast.error('请输入用户名')
+  loading.value = true
+  try {
+    const { data } = await authApi.pwdQuestion(u)
+    forgot.value.question = data.question
+    forgot.value.step = 2
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function forgotStep2() {
+  const f = forgot.value
+  if (!f.answer) return toast.error('请输入密保答案')
+  if (!PWD_RE.test(f.newPassword)) return toast.error('新密码需至少 8 位，且同时包含字母和数字')
+  if (f.newPassword !== f.newPassword2) return toast.error('两次输入的密码不一致')
+  loading.value = true
+  try {
+    await authApi.pwdReset({ username: f.username.trim(), answer: f.answer, newPassword: f.newPassword })
+    toast.success('密码已重置，请用新密码登录')
+    form.value.username = f.username.trim()
+    form.value.password = ''
+    mode.value = 'login'
   } catch (e) {
     toast.error(e.message)
   } finally {
@@ -89,13 +135,45 @@ function fillDemo() {
         <p class="sub">诗乐雅集 · 古诗配乐欣赏</p>
       </div>
 
-      <div class="tabs">
+      <div class="tabs" v-if="mode !== 'forgot'">
         <button :class="{ on: isLogin }" @click="switchMode('login')">登录</button>
         <button :class="{ on: !isLogin }" @click="switchMode('register')">注册</button>
         <span class="ink" :style="{ left: isLogin ? '0%' : '50%' }" />
       </div>
 
-      <form @submit.prevent="onSubmit" data-test="auth-form">
+      <!-- 忘记密码流程 -->
+      <div v-if="mode === 'forgot'" class="forgot" data-test="forgot-flow">
+        <template v-if="forgot.step === 1">
+          <div class="form-item">
+            <label class="form-label">用户名</label>
+            <input v-model.trim="forgot.username" class="input" placeholder="输入注册时的用户名" data-test="forgot-username" />
+          </div>
+          <button class="btn btn-primary btn-lg btn-block" :disabled="loading" @click="forgotStep1" data-test="forgot-next">
+            {{ loading ? '查询中…' : '下一步' }}
+          </button>
+        </template>
+        <template v-else>
+          <p class="forgot-q">密保问题：{{ forgot.question }}</p>
+          <div class="form-item">
+            <label class="form-label">密保答案</label>
+            <input v-model="forgot.answer" class="input" data-test="forgot-answer" />
+          </div>
+          <div class="form-item">
+            <label class="form-label">新密码</label>
+            <input v-model="forgot.newPassword" class="input" type="password" placeholder="至少 8 位，含字母和数字" data-test="forgot-new" />
+          </div>
+          <div class="form-item">
+            <label class="form-label">确认新密码</label>
+            <input v-model="forgot.newPassword2" class="input" type="password" />
+          </div>
+          <button class="btn btn-primary btn-lg btn-block" :disabled="loading" @click="forgotStep2" data-test="forgot-reset">
+            {{ loading ? '重置中…' : '重置密码' }}
+          </button>
+        </template>
+        <button class="back-login" @click="mode = 'login'">返回登录</button>
+      </div>
+
+      <form v-else @submit.prevent="onSubmit" data-test="auth-form">
         <div class="form-item">
           <label class="form-label">用户名</label>
           <input v-model.trim="form.username" class="input" placeholder="3-20 位字母、数字或下划线"
@@ -103,7 +181,7 @@ function fillDemo() {
         </div>
         <div class="form-item">
           <label class="form-label">密码</label>
-          <input v-model="form.password" class="input" type="password" placeholder="至少 6 位"
+          <input v-model="form.password" class="input" type="password" placeholder="至少 8 位，含字母和数字"
             autocomplete="current-password" data-test="password" />
         </div>
         <div class="form-item" v-if="!isLogin">
@@ -111,8 +189,30 @@ function fillDemo() {
           <input v-model="form.password2" class="input" type="password" placeholder="再输入一次密码" />
         </div>
         <div class="form-item" v-if="!isLogin">
+          <label class="form-label">密保问题</label>
+          <select v-model="form.pwdQuestion" class="input" data-test="pwd-question">
+            <option>出生城市</option>
+            <option>母亲的名字</option>
+            <option>小学的名字</option>
+            <option>第一只宠物的名字</option>
+            <option>最喜欢的一首诗</option>
+          </select>
+        </div>
+        <div class="form-item" v-if="!isLogin">
+          <label class="form-label">密保答案</label>
+          <input v-model="form.pwdAnswer" class="input" placeholder="用于找回密码，请勿遗忘" data-test="pwd-answer" />
+        </div>
+        <div class="form-item" v-if="!isLogin">
           <label class="form-label">昵称（可选）</label>
           <input v-model.trim="form.name" class="input" placeholder="默认与用户名相同" />
+        </div>
+
+        <div class="form-item" v-if="isLogin">
+          <label class="remember-row">
+            <input type="checkbox" v-model="remember" data-test="remember-me" />
+            <span>记住我（30 天内免登录）</span>
+          </label>
+          <button type="button" class="forgot-link" @click="mode = 'forgot'" data-test="go-forgot">忘记密码？</button>
         </div>
 
         <button class="btn btn-primary btn-lg btn-block" type="submit" :disabled="loading" data-test="submit">
@@ -257,4 +357,25 @@ function fillDemo() {
   top: 20px;
   left: 20px;
 }
+
+.remember-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; color: var(--text-2); cursor: pointer;
+}
+.forgot-link {
+  margin-left: auto; border: none; background: none;
+  font-size: 12.5px; color: var(--accent); cursor: pointer;
+}
+.forgot-link:hover { text-decoration: underline; }
+.forgot-q {
+  margin: 0 0 14px; padding: 10px 14px;
+  border-radius: 8px; background: var(--card-hover);
+  font-size: 13.5px; color: var(--text);
+}
+.back-login {
+  margin-top: 12px; border: none; background: none;
+  font-size: 12.5px; color: var(--text-3); cursor: pointer; width: 100%;
+}
+.back-login:hover { color: var(--primary); }
+select.input { appearance: auto; }
 </style>

@@ -134,6 +134,37 @@ export async function handle(ctx) {
         if (error) return error
         return ok(publicUser(user))
       }
+      /* 忘记密码（mock）：密保问答 + 重置 */
+      if (method === 'GET' && seg[1] === 'pwd' && seg[2] === 'question') {
+        const db = loadDB()
+        const u = db.user.find((x) => x.username === ctx.query.username)
+        if (!u || !u.pwdQuestion) return fail(400, '该账号未设置密保问题，请联系管理员重置')
+        return ok({ question: u.pwdQuestion })
+      }
+      if (method === 'POST' && seg[1] === 'pwd' && seg[2] === 'reset') {
+        const db = loadDB()
+        const u = db.user.find((x) => x.username === ctx.body?.username)
+        if (!u || !u.pwdAnswer || normLine(ctx.body?.answer) !== normLine(u.pwdAnswer)) {
+          return fail(400, '密保答案不正确')
+        }
+        if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(ctx.body?.newPassword || '')) {
+          return fail(400, '新密码需至少 8 位，且同时包含字母和数字')
+        }
+        u.password = ctx.body.newPassword
+        saveDB(db)
+        return ok({ ok: true })
+      }
+      if (method === 'POST' && seg[1] === 'password') {
+        const { user, error } = await requireAuth(ctx)
+        if (error) return error
+        if (user.password !== ctx.body?.oldPassword) return fail(400, '当前密码不正确')
+        if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(ctx.body?.newPassword || '')) {
+          return fail(400, '新密码需至少 8 位，且同时包含字母和数字')
+        }
+        user.password = ctx.body.newPassword
+        saveDB(db)
+        return ok({ ok: true })
+      }
     }
 
     /* ===== 用户管理 ===== */
@@ -812,12 +843,14 @@ async function register(body) {
   const username = String(b.username || '').trim()
   const password = String(b.password || '')
   if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) return fail(400, '用户名需为 3-16 位字母、数字或下划线')
-  if (password.length < 6) return fail(400, '密码长度至少 6 位')
+  if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(password)) return fail(400, '密码需至少 8 位，且同时包含字母和数字')
+  if (!b.pwdQuestion || !b.pwdAnswer) return fail(400, '请设置密保问题与答案，用于找回密码')
   const db = loadDB()
   if (db.user.some((u) => u.username === username)) return fail(400, '用户名已被注册')
   const id = (db.seq.user = (db.seq.user || 100) + 1)
   const user = {
     id, username, password,
+    pwdQuestion: b.pwdQuestion, pwdAnswer: b.pwdAnswer,
     name: String(b.name || '').trim().slice(0, 20) || username,
     avatar: '',
     sex: 0, phone: '', email: '', birth: '', intro: '', role: 'user', createTime: Date.now()

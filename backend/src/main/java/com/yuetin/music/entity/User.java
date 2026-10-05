@@ -23,4 +23,10 @@ public class User {
     private String intro;
     private String role;
     private Date createTime;
+
+    /** 密保问题（找回密码用）；答案散列存储，不参与序列化返回 */
+    private String pwdQuestion;
+    private String pwdAnswer;
+    private Integer failedCount;
+    private Date lockedUntil;
 }

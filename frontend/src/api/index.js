@@ -8,7 +8,10 @@ import request from './client'
 export const authApi = {
   login: (data) => request.post('/auth/login', data),
   register: (data) => request.post('/auth/register', data),
-  me: () => request.get('/auth/me')
+  me: () => request.get('/auth/me'),
+  pwdQuestion: (username) => request.get('/auth/pwd/question', { params: { username } }),
+  pwdReset: (data) => request.post('/auth/pwd/reset', data),
+  changePassword: (data) => request.post('/auth/password', data)
 }
 
 /* 用户 */

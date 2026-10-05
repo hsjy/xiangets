@@ -22,8 +22,8 @@ export const useUserStore = defineStore('user', {
     isAdmin: (s) => s.user?.role === 'admin'
   },
   actions: {
-    async login(username, password) {
-      const { data } = await authApi.login({ username, password })
+    async login(username, password, remember = false) {
+      const { data } = await authApi.login({ username, password, remember })
       this._apply(data)
       return data.user
     },

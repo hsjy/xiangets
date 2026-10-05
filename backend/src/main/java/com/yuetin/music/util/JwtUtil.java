@@ -45,13 +45,18 @@ public class JwtUtil {
     }
 
     public String sign(Long userId, String username, String role) {
+        return sign(userId, username, role, expireDays);
+    }
+
+    /** 记住我：登录时可选延长有效期（天） */
+    public String sign(Long userId, String username, String role, int days) {
         Date now = new Date();
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
                 .claim("username", username)
                 .claim("role", role)
                 .setIssuedAt(now)
-                .setExpiration(new Date(now.getTime() + expireDays * 24 * 3600 * 1000L))
+                .setExpiration(new Date(now.getTime() + days * 24 * 3600 * 1000L))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
