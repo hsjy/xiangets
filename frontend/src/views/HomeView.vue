@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { poetryApi, songApi } from '../api'
+import { poetryApi, songApi, collectionApi } from '../api'
 import { usePlayerStore } from '../stores/player'
 import Icon from '../components/Icon.vue'
 import UserAvatar from '../components/UserAvatar.vue'
@@ -12,6 +12,9 @@ const today = ref(null)      // 今日一诗：按日期轮换
 const facets = ref(null)
 const poets = ref([])
 const showcase = ref([])     // [{poem, aiTrack}]
+const collections = ref([])  // 主题选集
+const poetTotal = ref(0)     // 诗人总数（语料库全量）
+const todayTrack = ref(null) // 今日诗的朗诵轨
 
 /* ---- 依情绪的场景调色盘：天空 / 山色 / 云雾 / 日月 ---- */
 const SCENES = {
@@ -83,8 +86,19 @@ onMounted(async () => {
     if (f.status === 'fulfilled') facets.value = f.value.data
     if (g.status === 'fulfilled') poets.value = g.value.data.list
 
+    /* 主题选集 + 诗人总数 */
+    collectionApi.list().then(({ data }) => { collections.value = data }).catch(() => {})
+    poetryApi.poetPage({ page: 1, size: 1 }).then(({ data }) => { poetTotal.value = Number(data.total) }).catch(() => {})
+
+    /* 今日诗朗诵轨（一键收听） */
+    if (t.status === 'fulfilled' && t.value.data?.poem) {
+      songApi.list({ poemId: t.value.data.poem.id }).then(({ data: tracks }) => {
+        todayTrack.value = tracks.find((x) => x.trackKind === 'recitation') || null
+      }).catch(() => {})
+    }
+
     /* AI 谱曲 showcase：取三首已有 AI 轨的诗 */
-    const demo = [18, 8, 24]
+    const demo = [18, 8, 3]
     const got = await Promise.allSettled(
       demo.map((id) => Promise.all([poetryApi.poemDetail(id), songApi.list({ poemId: id })]))
     )
@@ -102,6 +116,9 @@ onMounted(async () => {
 
 function playTrack(t, poem) {
   player.playSong({ ...t, singerName: poem.poetName })
+}
+function playToday() {
+  if (todayTrack.value && today.value?.poem) playTrack(todayTrack.value, today.value.poem)
 }
 const firstLine = (p) => (p.paragraphs || '').split('\n')[0] || ''
 const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
@@ -171,6 +188,15 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
     </section>
 
     <!-- ============ 卷下内容（滚动渐现） ============ -->
+    <!-- 数据卷轴 -->
+    <section v-reveal class="sec stats-strip" v-if="facets?.poemCount">
+      <div class="stat"><span class="st-num">{{ Number(facets.poemCount).toLocaleString() }}</span><span class="st-label">首诗</span></div>
+      <span class="st-dot">·</span>
+      <div class="stat"><span class="st-num">{{ poetTotal.toLocaleString() }}</span><span class="st-label">位诗人</span></div>
+      <span class="st-dot">·</span>
+      <div class="stat"><span class="st-num">{{ facets.dynasties?.length || 0 }}</span><span class="st-label">个朝代</span></div>
+    </section>
+
     <!-- 今日一诗 -->
     <section v-reveal class="sec" v-if="today?.poem">
       <div class="today-card">
@@ -182,9 +208,51 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
             · {{ today.poem.poetName }} · {{ today.poem.dynasty }}
           </p>
           <p class="tc-line">{{ firstLine(today.poem) }}</p>
-          <router-link :to="`/poem/${today.poem.id}`" class="btn btn-primary">入其意境 →</router-link>
+          <div class="tc-actions">
+            <router-link :to="`/poem/${today.poem.id}`" class="btn btn-primary">入其意境 →</router-link>
+            <button v-if="todayTrack" class="btn btn-ghost" @click="playToday" data-test="today-recite">
+              <Icon name="play" :size="14" /> 听今日朗诵
+            </button>
+          </div>
         </div>
         <div class="tc-seal font-brush">{{ today.poem.mood?.slice(0, 1) || '诗' }}</div>
+      </div>
+    </section>
+
+    <!-- 游于艺：功能入口 -->
+    <section v-reveal class="sec">
+      <h2 class="sec-title">游于艺</h2>
+      <p class="sec-sub">诗之外，还有这些玩法</p>
+      <div class="fun-grid">
+        <router-link to="/feihua" class="fun-card">
+          <span class="fu-seal font-brush">令</span>
+          <div><h3>飞花令</h3><p>择一字为令，与三十四万首诗轮流对句</p></div>
+        </router-link>
+        <router-link :to="`/poem/${today?.poem?.id || ''}`" class="fun-card" v-if="today?.poem">
+          <span class="fu-seal font-brush">问</span>
+          <div><h3>问诗</h3><p>DeepSeek 先生伴读，就今日之诗有问必答</p></div>
+        </router-link>
+        <router-link to="/collections" class="fun-card">
+          <span class="fu-seal font-brush">集</span>
+          <div><h3>主题选集</h3><p>策展式组诗，边塞明月、田园归隐各成一番</p></div>
+        </router-link>
+        <router-link :to="`/poem/${today?.poem?.id || ''}`" class="fun-card" v-if="today?.poem">
+          <span class="fu-seal font-brush">笺</span>
+          <div><h3>诗笺</h3><p>竖排笺纸配朱砂印，一首诗制成一张可存的笺</p></div>
+        </router-link>
+      </div>
+    </section>
+
+    <!-- 主题选集精选 -->
+    <section v-reveal class="sec" v-if="collections.length">
+      <h2 class="sec-title">主题选集</h2>
+      <p class="sec-sub">以意相聚，以境相从</p>
+      <div class="col-strip">
+        <router-link v-for="c in collections" :key="c.id" :to="`/collection/${c.id}`" class="cs-card">
+          <span class="cs-count">{{ c.poemCount }} 首</span>
+          <h3>{{ c.title }}</h3>
+          <p class="cs-sub">{{ c.subtitle }}</p>
+        </router-link>
       </div>
     </section>
 
@@ -247,11 +315,11 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
       <div class="go-grid">
         <router-link to="/poems" class="go-card">
           <h3>诗选 <Icon name="chevron-right" :size="16" /></h3>
-          <p>{{ facets?.poemCount || 24 }} 首名篇 · 朝代与心境 · 注译赏俱全</p>
+          <p>{{ Number(facets?.poemCount || 0).toLocaleString() }} 首诗 · 朝代与心境 · 注译赏俱全</p>
         </router-link>
         <router-link to="/poets" class="go-card">
           <h3>诗人 <Icon name="chevron-right" :size="16" /></h3>
-          <p>{{ poets.length }} 位诗人 · 生平故事 · 存诗目录</p>
+          <p>{{ poetTotal.toLocaleString() }} 位诗人 · 生平故事 · 行旅图 · 交游图谱</p>
         </router-link>
         <router-link to="/study" class="go-card">
           <h3>书斋 <Icon name="chevron-right" :size="16" /></h3>
@@ -486,4 +554,61 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
   .today-card { flex-direction: column; align-items: flex-start; padding: 28px; }
   .tc-seal { display: none; }
 }
+
+/* ============ 数据卷轴 ============ */
+.stats-strip {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 18px;
+  padding: 6px 0 2px;
+}
+.stat { display: flex; align-items: baseline; gap: 8px; }
+.st-num { font-size: 26px; font-weight: 700; color: var(--primary-2); font-variant-numeric: tabular-nums; }
+.st-label { font-size: 13px; color: var(--text-3); letter-spacing: 2px; }
+.st-dot { color: var(--text-3); }
+
+/* ============ 今日一诗快捷操作 ============ */
+.tc-actions { display: flex; gap: 10px; margin-top: 4px; }
+
+/* ============ 游于艺 ============ */
+.fun-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.fun-card {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  transition: all 0.18s;
+}
+.fun-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 8px 22px rgba(64, 99, 77, 0.16); }
+.fu-seal {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--seal); color: #fbf6ea;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.fun-card h3 { margin: 0 0 4px; font-size: 15.5px; }
+.fun-card p { margin: 0; font-size: 12.5px; line-height: 1.8; color: var(--text-2); }
+
+/* ============ 主题选集精选 ============ */
+.col-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.cs-card {
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  transition: all 0.18s;
+  position: relative;
+}
+.cs-card:hover { border-color: var(--primary); transform: translateY(-3px); }
+.cs-count {
+  position: absolute; top: 12px; right: 12px;
+  font-size: 11px; color: var(--text-3);
+}
+.cs-card h3 { margin: 0 0 6px; font-size: 15.5px; letter-spacing: 1px; }
+.cs-sub { margin: 0; font-size: 12px; color: var(--text-2); line-height: 1.7; }
 </style>
