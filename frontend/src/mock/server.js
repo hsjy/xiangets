@@ -666,6 +666,147 @@ export async function handle(ctx) {
       }
     }
 
+
+    /* ---------- 好友（mock） ---------- */
+    if (seg[0] === 'friend') {
+      const db = loadDB()
+      db.userFriend = db.userFriend || []
+      db.friendMessage = db.friendMessage || []
+
+      const requireAuthM = async () => await requireAuth(ctx)
+
+      if (method === 'GET' && seg[1] === 'search') {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        const kw = String(ctx.query.keyword || '').trim().toLowerCase()
+        if (!kw) return ok([])
+        const results = db.user
+          .filter(u => u.id !== user.id && (u.username + (u.name || '')).toLowerCase().includes(kw))
+          .map(u => {
+            const pair = db.userFriend.find(f =>
+              (f.userId === user.id && f.friendId === u.id) ||
+              (f.userId === u.id && f.friendId === user.id))
+            return { id: u.id, username: u.username, name: u.name || u.username,
+                     relation: pair ? pair.status : 'none' }
+          })
+        return ok(results)
+      }
+      if (method === 'POST' && seg[1] === 'request') {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        const target = db.user.find(u => u.username === String(ctx.body?.username || '').trim())
+        if (!target) return fail(404, '用户不存在')
+        if (target.id === user.id) return fail(400, '不能加自己为好友')
+        const existing = db.userFriend.find(f =>
+          (f.userId === user.id && f.friendId === target.id) ||
+          (f.userId === target.id && f.friendId === user.id))
+        if (existing) return fail(400, existing.status === 'accepted' ? '你们已经是好友了' : '已有待处理的好友请求')
+        db.userFriend.push({ id: (db.seq.uf = (db.seq.uf || 200) + 1),
+          userId: user.id, friendId: target.id, status: 'pending', createTime: Date.now() })
+        saveDB(db)
+        return ok({ ok: true })
+      }
+      if (method === 'POST' && seg[1] === 'respond' && seg[2]) {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        const rel = db.userFriend.find(f => f.id === Number(seg[2]) && f.friendId === user.id && f.status === 'pending')
+        if (!rel) return fail(400, '请求不存在或已处理')
+        rel.status = ctx.body?.accept ? 'accepted' : 'rejected'
+        saveDB(db)
+        return ok({ ok: true })
+      }
+      if (method === 'DELETE' && seg[1] === 'remove' && seg[2]) {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        const idx = db.userFriend.findIndex(f => f.id === Number(seg[2]) &&
+          (f.userId === user.id || f.friendId === user.id))
+        if (idx < 0) return fail(404, '好友关系不存在')
+        db.userFriend.splice(idx, 1)
+        saveDB(db)
+        return ok({ ok: true })
+      }
+      if (method === 'GET' && seg[1] === 'list') {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        const list = db.userFriend
+          .filter(f => f.status === 'accepted' && (f.userId === user.id || f.friendId === user.id))
+          .map(f => {
+            const fid = f.userId === user.id ? f.friendId : f.userId
+            const u = db.user.find(x => x.id === fid)
+            const unread = db.friendMessage.filter(m => m.senderId === fid && m.receiverId === user.id && !m.isRead).length
+            return { relId: f.id, friendId: fid, name: u?.name || '', username: u?.username || '', unread }
+          })
+        return ok(list)
+      }
+      if (method === 'GET' && seg[1] === 'incoming') {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        return ok(db.userFriend
+          .filter(f => f.friendId === user.id && f.status === 'pending')
+          .map(f => {
+            const u = db.user.find(x => x.id === f.userId)
+            return { relId: f.id, name: u?.name || '', username: u?.username || '', requestTime: f.createTime }
+          }))
+      }
+      if (method === 'GET' && seg[1] === 'outgoing') {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        return ok(db.userFriend
+          .filter(f => f.userId === user.id && f.status === 'pending')
+          .map(f => {
+            const u = db.user.find(x => x.id === f.friendId)
+            return { relId: f.id, name: u?.name || '', username: u?.username || '', requestTime: f.createTime }
+          }))
+      }
+      if (method === 'GET' && seg[1] === 'messages' && seg[2]) {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        const fid = Number(seg[2])
+        db.friendMessage.filter(m => m.senderId === fid && m.receiverId === user.id).forEach(m => m.isRead = 1)
+        const list = db.friendMessage
+          .filter(m => (m.senderId === user.id && m.receiverId === fid) || (m.senderId === fid && m.receiverId === user.id))
+          .sort((a, b) => a.createTime - b.createTime)
+          .map(m => ({ ...m, senderName: db.user.find(u => u.id === m.senderId)?.name || '' }))
+        saveDB(db)
+        return ok({ messages: list, unread: 0 })
+      }
+      if (method === 'POST' && seg[1] === 'message' && seg[2]) {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        const fid = Number(seg[2])
+        const pair = db.userFriend.find(f =>
+          ((f.userId === user.id && f.friendId === fid) || (f.userId === fid && f.friendId === user.id)) &&
+          f.status === 'accepted')
+        if (!pair) return fail(400, '你们还不是好友')
+        db.friendMessage.push({ id: (db.seq.fm = (db.seq.fm || 300) + 1),
+          senderId: user.id, receiverId: fid, content: String(ctx.body?.content || '').slice(0, 500),
+          isRead: 0, createTime: Date.now() })
+        saveDB(db)
+        return ok({ ok: true })
+      }
+      if (method === 'GET' && seg[1] === 'admin' && seg[2] === 'all') {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        if (user.role !== 'admin') return fail(403, '需要管理员身份')
+        return ok(db.userFriend.map(f => ({
+          id: f.id,
+          userName: db.user.find(u => u.id === f.userId)?.name || '',
+          friendName: db.user.find(u => u.id === f.friendId)?.name || '',
+          status: f.status, createTime: f.createTime
+        })))
+      }
+      if (method === 'GET' && seg[1] === 'admin' && seg[2] === 'messages') {
+        const { user, error } = await requireAuthM()
+        if (error) return error
+        if (user.role !== 'admin') return fail(403, '需要管理员身份')
+        return ok(db.friendMessage.slice(-200).reverse().map(m => ({
+          id: m.id, senderName: db.user.find(u => u.id === m.senderId)?.name || '',
+          receiverName: db.user.find(u => u.id === m.receiverId)?.name || '',
+          content: m.content, isRead: m.isRead, createTime: m.createTime
+        })))
+      }
+    }
+
     /* ===== 站点统计 ===== */
 
     /* ---------- 策展：选集 / 关系 / 飞花令 / 问诗（mock 版） ---------- */

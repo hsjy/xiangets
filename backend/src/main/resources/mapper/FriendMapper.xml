@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yuetin.music.mapper.FriendMapper">
+
+    <insert id="insertRequest">
+        INSERT INTO user_friend (user_id, friend_id, status) VALUES (#{userId}, #{friendId}, 'pending')
+    </insert>
+
+    <select id="findPair" resultType="map">
+        SELECT id, user_id AS userId, friend_id AS friendId, status
+        FROM user_friend
+        WHERE (user_id = #{userId} AND friend_id = #{friendId})
+           OR (user_id = #{friendId} AND friend_id = #{userId})
+        LIMIT 1
+    </select>
+
+    <update id="updateStatus">
+        UPDATE user_friend SET status = #{status}
+        WHERE id = #{id} AND friend_id = #{userId} AND status = 'pending'
+    </update>
+
+    <select id="listFriends" resultType="map">
+        SELECT f.id AS relId,
+               CASE WHEN f.user_id = #{userId} THEN f.friend_id ELSE f.user_id END AS friendId,
+               u.name, u.username, u.avatar, u.role
+        FROM user_friend f
+        JOIN user u ON u.id = (CASE WHEN f.user_id = #{userId} THEN f.friend_id ELSE f.user_id END)
+        WHERE f.status = 'accepted'
+          AND (f.user_id = #{userId} OR f.friend_id = #{userId})
+        ORDER BY f.create_time DESC
+    </select>
+
+    <select id="listIncoming" resultType="map">
+        SELECT f.id AS relId, f.user_id AS fromUserId,
+               u.name, u.username, u.avatar, u.create_time AS requestTime
+        FROM user_friend f
+        JOIN user u ON u.id = f.user_id
+        WHERE f.friend_id = #{userId} AND f.status = 'pending'
+        ORDER BY f.create_time DESC
+    </select>
+
+    <select id="listOutgoing" resultType="map">
+        SELECT f.id AS relId, f.friend_id AS toUserId,
+               u.name, u.username, u.avatar, u.create_time AS requestTime
+        FROM user_friend f
+        JOIN user u ON u.id = f.friend_id
+        WHERE f.user_id = #{userId} AND f.status = 'pending'
+        ORDER BY f.create_time DESC
+    </select>
+
+    <delete id="deletePair">
+        DELETE FROM user_friend WHERE id = #{id}
+    </delete>
+
+    <select id="listMessages" resultType="map">
+        SELECT m.id, m.sender_id AS senderId, m.receiver_id AS receiverId,
+               m.content, m.is_read AS isRead, m.create_time AS createTime,
+               su.name AS senderName
+        FROM friend_message m
+        JOIN user su ON su.id = m.sender_id
+        WHERE (m.sender_id = #{senderId} AND m.receiver_id = #{receiverId})
+           OR (m.sender_id = #{receiverId} AND m.receiver_id = #{senderId})
+        ORDER BY m.create_time ASC
+    </select>
+
+    <insert id="insertMessage">
+        INSERT INTO friend_message (sender_id, receiver_id, content)
+        VALUES (#{senderId}, #{receiverId}, #{content})
+    </insert>
+
+    <update id="markRead">
+        UPDATE friend_message SET is_read = 1
+        WHERE sender_id = #{senderId} AND receiver_id = #{receiverId} AND is_read = 0
+    </update>
+
+    <select id="unreadCount" resultType="int">
+        SELECT COUNT(*) FROM friend_message
+        WHERE receiver_id = #{receiverId} AND sender_id = #{senderId} AND is_read = 0
+    </select>
+
+    <select id="adminAllFriendships" resultType="map">
+        SELECT f.id, f.user_id AS userId, f.friend_id AS friendId,
+               f.status, f.create_time AS createTime,
+               u1.name AS userName, u2.name AS friendName
+        FROM user_friend f
+        JOIN user u1 ON u1.id = f.user_id
+        JOIN user u2 ON u2.id = f.friend_id
+        ORDER BY f.create_time DESC
+    </select>
+
+    <select id="adminAllMessages" resultType="map">
+        SELECT m.id, m.sender_id AS senderId, m.receiver_id AS receiverId,
+               m.content, m.is_read AS isRead, m.create_time AS createTime,
+               su.name AS senderName, ru.name AS receiverName
+        FROM friend_message m
+        JOIN user su ON su.id = m.sender_id
+        JOIN user ru ON ru.id = m.receiver_id
+        ORDER BY m.create_time DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

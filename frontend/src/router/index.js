@@ -16,6 +16,7 @@ const routes = [
   { path: '/collection/:id', name: 'collectionDetail', component: () => import('../views/CollectionView.vue'), meta: { title: '选集' } },
   { path: '/feihua', name: 'feihua', component: () => import('../views/FeihuaView.vue'), meta: { title: '飞花令' } },
   { path: '/games', name: 'games', component: () => import('../views/GamesView.vue'), meta: { title: '诗游' } },
+  { path: '/friends', name: 'friends', component: () => import('../views/FriendsView.vue'), meta: { title: '好友', requiresAuth: true } },
   { path: '/study', name: 'study', component: () => import('../views/StudyView.vue'), meta: { title: '书斋', requiresAuth: true } },
   { path: '/profile', name: 'profile', component: () => import('../views/ProfileView.vue'), meta: { title: '个人资料', requiresAuth: true } },
   { path: '/admin', name: 'admin', component: () => import('../views/AdminView.vue'), meta: { title: '管理后台', requiresAuth: true, requiresAdmin: true } },

@@ -146,3 +146,18 @@ export const adminApi = {
   comments: () => request.get('/poem/comment/all'),
   deleteComment: (id) => request.delete(`/poem/comment/delete/${id}`)
 }
+
+/* 好友 */
+export const friendApi = {
+  search: (keyword) => request.get('/friend/search', { params: { keyword } }),
+  request: (username) => request.post('/friend/request', { username }),
+  respond: (relId, accept) => request.post(`/friend/respond/${relId}`, { accept }),
+  remove: (relId) => request.delete(`/friend/remove/${relId}`),
+  list: () => request.get('/friend/list'),
+  incoming: () => request.get('/friend/incoming'),
+  outgoing: () => request.get('/friend/outgoing'),
+  messages: (friendId) => request.get(`/friend/messages/${friendId}`),
+  sendMessage: (friendId, content) => request.post(`/friend/message/${friendId}`, { content }),
+  adminAll: () => request.get('/friend/admin/all'),
+  adminMessages: (limit) => request.get('/friend/admin/messages', { params: { limit } })
+}

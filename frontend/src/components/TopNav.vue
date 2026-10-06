@@ -22,6 +22,7 @@ const navs = [
   { to: '/collections', label: '选集' },
   { to: '/feihua', label: '飞花令' },
   { to: '/games', label: '诗游' },
+  { to: '/friends', label: '好友' },
   { to: '/study', label: '书斋' }
 ]
 

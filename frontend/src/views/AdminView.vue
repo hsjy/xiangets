@@ -4,7 +4,7 @@
  * 仅管理员可见（路由守卫 requiresAdmin）；后端接口另有 requireAdmin 兜底。
  */
 import { ref, computed, onMounted } from 'vue'
-import { adminApi, authApi } from '../api'
+import { adminApi, authApi, friendApi } from '../api'
 import { levelOf } from '../utils/points'
 import { useUserStore } from '../stores/user'
 import { confirmAction } from '../stores/ui'
@@ -26,15 +26,22 @@ const filteredUsers = computed(() => {
     (u.username + u.name + (u.role || '')).toLowerCase().includes(k))
 })
 
+const friendships = ref([])
+const adminMessages = ref([])
+
 async function load() {
   loading.value = true
   try {
     if (tab.value === 'users') {
       const { data } = await adminApi.users()
       users.value = data
-    } else {
+    } else if (tab.value === 'comments') {
       const { data } = await adminApi.comments()
       comments.value = data
+    } else if (tab.value === 'friends') {
+      const [fr, ms] = await Promise.allSettled([friendApi.adminAll(), friendApi.adminMessages(200)])
+      if (fr.status === 'fulfilled') friendships.value = fr.value.data
+      if (ms.status === 'fulfilled') adminMessages.value = ms.value.data
     }
   } finally {
     loading.value = false
@@ -116,6 +123,7 @@ onMounted(load)
       <div class="tabs">
         <button :class="{ on: tab === 'users' }" @click="switchTab('users')" data-test="tab-users">用户管理</button>
         <button :class="{ on: tab === 'comments' }" @click="switchTab('comments')" data-test="tab-comments">感悟管理</button>
+        <button :class="{ on: tab === 'friends' }" @click="switchTab('friends')" data-test="tab-friends">好友管理</button>
       </div>
     </div>
 
@@ -188,6 +196,39 @@ onMounted(load)
         </table>
       </div>
     </template>
+
+    <!-- 好友管理 -->
+    <template v-else-if="tab === 'friends'">
+      <h3 class="admin-sub">好友关系（{{ friendships.length }}）</h3>
+      <div class="table-wrap card">
+        <table class="tbl">
+          <thead><tr><th>用户</th><th>好友</th><th>状态</th><th>时间</th></tr></thead>
+          <tbody>
+            <tr v-for="f in friendships" :key="f.id">
+              <td>{{ f.userName }}</td>
+              <td>{{ f.friendName }}</td>
+              <td><span :class="f.status === 'accepted' ? 'badge-ok' : 'badge-lock'">{{ f.status === 'accepted' ? '已是好友' : '待处理' }}</span></td>
+              <td>{{ formatDate(f.createTime) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <h3 class="admin-sub" style="margin-top:18px">私信消息（{{ adminMessages.length }}）</h3>
+      <div class="table-wrap card">
+        <table class="tbl">
+          <thead><tr><th>发送者</th><th>接收者</th><th>内容</th><th>已读</th><th>时间</th></tr></thead>
+          <tbody>
+            <tr v-for="m in adminMessages" :key="m.id">
+              <td>{{ m.senderName }}</td>
+              <td>{{ m.receiverName }}</td>
+              <td class="content">{{ m.content }}</td>
+              <td>{{ m.isRead ? '已读' : '未读' }}</td>
+              <td>{{ formatDate(m.createTime) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -236,4 +277,5 @@ onMounted(load)
 .pts-cell { white-space: nowrap; }
 .pts-num { font-weight: 600; color: var(--accent); font-size: 14px; }
 .pts-title { display: block; font-size: 11px; color: var(--text-3); }
+.admin-sub { margin: 14px 0 10px; font-size: 15px; }
 </style>
