@@ -34,7 +34,7 @@ const inputRef = ref(null)
 const norm = (s) => (s || '').replace(/[，。？！；、：""''\s]/g, '')
 
 /* ---- 每轮倒计时：限时 30 秒，超时判败 ---- */
-const TIME_LIMIT = 30
+const TIME_LIMIT = 60
 const timeLeft = ref(TIME_LIMIT)
 const timer = ref(null)
 const roundOver = ref(false)   // 本轮是否已结束（超时或已提交）
@@ -62,6 +62,28 @@ function stopTimer() {
 
 const timerPct = computed(() => Math.round((timeLeft.value / TIME_LIMIT) * 100))
 
+/* ---- 帮填：系统从当前令句中取一字填入，每局 3 次 ---- */
+const HELPS_MAX = 3
+const helpsLeft = ref(HELPS_MAX)
+
+/** 系统出句后同步归一化（帮填需按归一化后的文本取字） */
+const sysLine = ref('')
+
+function useHelp() {
+  if (helpsLeft.value <= 0 || over.value || roundOver.value) return
+  // 找当前令句（最后一条 sys）
+  const sys = [...rounds.value].reverse().find((r) => r.who === 'sys')
+  if (!sys) return
+  const target = norm(sys.line)
+  if (!target) return
+  // 填入下一个未揭示的字（按目标文本顺序，已填的前缀之外取下一个）
+  const current = norm(myLine.value)
+  if (current.length >= target.length) return
+  const nextChar = target[current.length]
+  myLine.value += nextChar
+  helpsLeft.value--
+}
+
 function start(ch) {
   const c = (ch || '').trim()
   if (!/^[\u4e00-\u9fa5]$/.test(c)) {
@@ -74,6 +96,7 @@ function start(ch) {
   over.value = false
   overReason.value = ''
   started.value = true
+  helpsLeft.value = HELPS_MAX
   systemTurn()
 }
 
@@ -83,6 +106,7 @@ async function systemTurn() {
     const { data } = await feihuaApi.draw(char.value, used.value)
     used.value.push(data.line)
     rounds.value.push({ who: 'sys', line: data.line, title: data.title, poetName: data.poetName })
+    sysLine.value = data.line
     await nextTick()
     inputRef.value?.focus()
     startTimer()
@@ -208,6 +232,9 @@ async function randomChar() {
             :placeholder="roundOver ? '本轮超时，请重开一局' : `写出一句含「${char}」的诗…`"
             data-test="feihua-input"
           />
+          <button class="btn btn-ghost btn-sm help-btn" :disabled="submitting || loading || roundOver || helpsLeft <= 0"
+            @click="useHelp" :title="`系统帮你填一字（剩 ${helpsLeft} 次）`" data-test="feihua-help"
+          >帮填 {{ helpsLeft }}</button>
           <button class="btn btn-primary" type="submit" :disabled="submitting || loading || roundOver" data-test="feihua-submit">对令</button>
         </form>
       </section>
@@ -272,6 +299,8 @@ async function randomChar() {
   border-radius: 999px; padding: 3px 12px;
 }
 .gain { font-size: 11.5px; color: var(--accent); font-style: italic; }
+.help-btn { color: var(--accent); border-color: var(--border-strong); white-space: nowrap; }
+.help-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 
 .setup-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .setup-title { margin: 0; font-size: 16px; }
