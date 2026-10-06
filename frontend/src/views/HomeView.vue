@@ -261,7 +261,7 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
     </section>
 
     <!-- 情绪入口 -->
-    <section v-reveal class="sec painting-band bg-nizan-shulin">
+    <section v-reveal class="sec">
       <h2 class="sec-title">以心入境</h2>
       <p class="sec-sub">循情绪寻诗</p>
       <div class="chips">
