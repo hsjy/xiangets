@@ -3,16 +3,17 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.yuetin.music.mapper.PoetRelationMapper">
 
+    <!-- 双向匹配：关系存储为单条，两侧页面都应看到这条边 -->
     <select id="findByPoet" resultType="map">
-        SELECT r.related_id   AS relatedId,
-               p.name         AS relatedName,
-               p.title        AS relatedTitle,
-               p.dynasty      AS relatedDynasty,
-               r.rel_type     AS relType,
-               r.note         AS note
+        SELECT CASE WHEN r.poet_id = #{poetId} THEN r.related_id ELSE r.poet_id END AS relatedId,
+               p2.name         AS relatedName,
+               p2.title        AS relatedTitle,
+               p2.dynasty      AS relatedDynasty,
+               r.rel_type      AS relType,
+               r.note          AS note
         FROM poet_relation r
-        JOIN poet p ON p.id = r.related_id
-        WHERE r.poet_id = #{poetId}
+        JOIN poet p2 ON p2.id = (CASE WHEN r.poet_id = #{poetId} THEN r.related_id ELSE r.poet_id END)
+        WHERE r.poet_id = #{poetId} OR r.related_id = #{poetId}
         ORDER BY r.id ASC
     </select>
 </mapper>
