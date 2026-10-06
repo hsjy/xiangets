@@ -7,6 +7,7 @@ import com.yuetin.music.common.UserContext;
 import com.yuetin.music.entity.Singer;
 import com.yuetin.music.entity.Song;
 import com.yuetin.music.mapper.SingerMapper;
+import com.yuetin.music.mapper.AiMusicMapper;
 import com.yuetin.music.mapper.SongMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ public class AdminController {
 
     private final SingerMapper singerMapper;
     private final SongMapper songMapper;
+    private final AiMusicMapper aiMusicMapper;
 
     /* ---------------- 歌手 ---------------- */
 
@@ -124,12 +126,16 @@ public class AdminController {
         return Result.ok(s);
     }
 
-    /** 删除歌曲：歌单关联、评论、红心均由外键级联清理。 */
+    /** 删除歌曲：歌单关联、评论、红心均由外键级联清理。AI 曲同时清谱曲任务，保证可重新生成。 */
     @DeleteMapping("/song/delete/{id}")
     @Transactional
     public Result<Void> deleteSong(@PathVariable Long id) {
         requireAdmin();
-        if (songMapper.findById(id) == null) throw BizException.notFound("歌曲不存在");
+        Song song = songMapper.findById(id);
+        if (song == null) throw BizException.notFound("歌曲不存在");
+        if ("ai".equals(song.getTrackKind())) {
+            aiMusicMapper.deleteByTrackId(id);
+        }
         songMapper.deleteById(id);
         return Result.ok();
     }

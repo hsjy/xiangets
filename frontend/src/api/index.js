@@ -135,6 +135,8 @@ export const feihuaApi = {
 
 /* 管理后台（仅管理员） */
 export const adminApi = {
+  songRename: (id, name) => request.put(`/song/update/${id}`, { name }),
+  songDelete: (id) => request.delete(`/song/delete/${id}`),
   users: () => request.get('/user/list'),
   setRole: (id, role) => request.put(`/user/role/${id}`, { role }),
   resetUserPwd: (id, newPassword) => request.post(`/user/reset-pwd/${id}`, { newPassword }),

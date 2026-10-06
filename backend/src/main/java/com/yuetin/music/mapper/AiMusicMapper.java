@@ -18,4 +18,7 @@ public interface AiMusicMapper {
 
     /** 任务完成后回填音轨信息，便于前端直接播放 */
     List<AiMusic> findByPoemWithTrack(@Param("poemId") Long poemId);
+
+    /** 删除指向某音轨的谱曲任务（音轨删除时保证可重新生成） */
+    int deleteByTrackId(@Param("trackId") Long trackId);
 }

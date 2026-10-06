@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { poetryApi, poemFavApi, poemCommentApi, songApi, aiMusicApi } from '../api'
+import { poetryApi, poemFavApi, poemCommentApi, songApi, aiMusicApi, adminApi } from '../api'
 import { usePlayerStore } from '../stores/player'
 import { useUserStore } from '../stores/user'
 import { confirmAction } from '../stores/ui'
@@ -97,6 +97,32 @@ async function load() {
     poem.value = null
   } finally {
     loading.value = false
+  }
+}
+
+/* AI 曲管理：重命名 / 删除（管理员） */
+async function renameTrack(t) {
+  const name = prompt('重命名 AI 谱曲：', t.name)
+  if (name == null || !name.trim() || name.trim() === t.name) return
+  try {
+    await adminApi.songRename(t.id, name.trim())
+    t.name = name.trim()
+    toast.success('已重命名')
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+async function removeTrack(t) {
+  const yes = await confirmAction(`确定删除「${t.name}」吗？其音频文件将不再可用。`, '删除 AI 谱曲')
+  if (!yes) return
+  try {
+    await adminApi.songDelete(t.id)
+    tracks.value = tracks.value.filter((x) => x.id !== t.id)
+    if (activeTrackId.value === t.id) activeTrackId.value = null
+    toast.success('已删除')
+  } catch (e) {
+    toast.error(e.message)
   }
 }
 
@@ -278,24 +304,32 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
               <span class="tag plain" v-if="poem.genre">{{ poem.genre }}</span>
             </div>
 
-            <!-- 音轨（乐为辅助） -->
-            <div class="tracks card" v-if="tracks.length">
-              <p class="t-label">以乐佐诗</p>
+            <!-- 音轨（乐为辅助）：轻量行内，不与诗争位 -->
+            <div class="tracks" v-if="tracks.length">
+              <span class="t-label">以乐佐诗</span>
               <button
                 v-for="t in [...aiTracks, ...recitations, ...bgms]" :key="t.id"
                 class="track" :class="{ playing: activeTrackId === t.id }"
+                :title="'播放 ' + t.name"
                 @click="playTrack(t)"
               >
                 <span class="t-kind" :class="'k-' + t.trackKind">{{ { recitation: '诵', bgm: '乐', ai: 'AI' }[t.trackKind] }}</span>
                 <span class="t-name">{{ t.name }}</span>
                 <span class="t-dur">{{ Math.round(t.duration) }}″</span>
+                <!-- AI 曲可管理：重命名 / 删除（管理员） -->
+                <span class="t-ops" v-if="t.trackKind === 'ai' && userStore.isAdmin" @click.stop>
+                  <button class="t-op" :title="'重命名'" @click="renameTrack(t)">✎</button>
+                  <button class="t-op danger" :title="'删除此版本'" @click="removeTrack(t)">✕</button>
+                </span>
+              </button>
+              <button class="track compose-mini" :disabled="polling" @click="compose"
+                :title="polling ? '谱曲中…' : '再谱一版'">
+                <span class="t-kind plus">＋</span>
+                <span class="t-name compose-text">{{ polling ? '谱曲中…' : '再谱一曲' }}</span>
               </button>
             </div>
 
             <div class="actions">
-              <button class="btn compose" :disabled="polling" @click="compose" data-test="ai-compose">
-                {{ polling ? '谱曲中…' : aiJob?.status === 'done' ? '✦ 再谱一曲' : '✦ 为此诗谱曲' }}
-              </button>
               <button class="btn fav" :class="{ on: favorited }" @click="toggleFav" data-test="poem-fav">
                 {{ favorited ? '✓ 已入书斋' : '收入书斋' }}
               </button>
@@ -500,47 +534,65 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .poet-link { color: var(--primary-2); }
 .tag.plain { background: none; color: var(--text-3); border-color: var(--border); cursor: default; }
 
-.tracks { padding: 14px; }
-.t-label { margin: 0 0 8px; font-size: 12px; color: var(--text-3); letter-spacing: 2px; }
-.track {
+.tracks {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--text);
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 10px 2px 2px;
+  border-top: 1px dashed var(--border);
+}
+.t-label { font-size: 11px; color: var(--text-3); letter-spacing: 2px; }
+.track {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-2);
   cursor: pointer;
-  margin-bottom: 6px;
   transition: all 0.15s;
   text-align: left;
+  font-family: inherit;
 }
-.track:last-child { margin-bottom: 0; }
-.track:hover { border-color: var(--primary); }
-.track.playing { border-color: var(--primary); background: var(--grad-soft); }
+.track:hover { background: rgba(64, 99, 77, 0.08); }
+.track.playing { color: var(--primary-2); background: var(--grad-soft); }
 .t-kind {
-  width: 22px; height: 22px;
+  width: 17px; height: 17px;
   border-radius: 4px;
   background: var(--seal);
   color: #fbf6ea;
-  font-size: 12px;
+  font-size: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  opacity: 0.85;
 }
 .t-kind.k-bgm { background: var(--primary); }
-.t-kind.k-ai { background: var(--accent); font-size: 9px; font-weight: 700; }
-.track .t-kind:last-child { background: var(--primary); }
-.t-name { flex: 1; font-size: 13px; }
-.t-dur { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.t-kind.k-ai { background: var(--accent); font-size: 8px; font-weight: 700; }
+.t-kind.plus { background: none; border: 1px dashed var(--border-strong); color: var(--text-3); }
+.t-name { font-size: 12.5px; }
+.compose-text { color: var(--text-3); }
+.compose-mini:hover .compose-text { color: var(--primary); }
+.track.playing .t-name { color: var(--primary-2); font-weight: 600; }
+.t-dur { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.t-ops { display: inline-flex; gap: 2px; margin-left: 2px; }
+.t-op {
+  border: none; background: none;
+  color: var(--text-3); font-size: 11px;
+  cursor: pointer; padding: 1px 3px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.track:hover .t-op { opacity: 0.7; }
+.t-op:hover { opacity: 1 !important; color: var(--primary); background: rgba(64, 99, 77, 0.1); }
+.t-op.danger:hover { color: var(--danger); background: rgba(127, 29, 29, 0.08); }
 
 .actions { display: flex; gap: 10px; align-items: center; flex-wrap: nowrap; }
-.compose { background: var(--accent); color: #fbf6ea; border: 1px solid var(--accent); }
-.compose:hover:not(:disabled) { filter: brightness(1.1); }
-.compose:disabled { opacity: 0.7; }
 .ghost-act { background: none; border: 1px solid var(--border-strong); color: var(--text-2); }
 .ghost-act:hover { border-color: var(--primary); color: var(--primary); }
 .fav { border: 1px solid var(--border-strong); background: var(--card); color: var(--text-2); }

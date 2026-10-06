@@ -45,4 +45,7 @@
         </set>
         WHERE id = #{id}
     </update>
+    <delete id="deleteByTrackId">
+        DELETE FROM ai_music WHERE track_id = #{trackId}
+    </delete>
 </mapper>
