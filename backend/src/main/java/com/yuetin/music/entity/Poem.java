@@ -23,6 +23,8 @@ public class Poem {
     /** 情绪意象：月夜/田园/送别/边塞/思乡/壮志/闲适/怀人/哲理/豪放 */
     private String mood;
     private String famousLine;
+    /** 名句专赏：针对流传名句的单独赏析 */
+    private String famousNote;
 
     /** 内容分层：1 精选（带注释译文赏析）/ 2 语料（批量导入全文） */
     private Integer tier;

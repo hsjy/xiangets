@@ -309,6 +309,11 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 
       <!-- 注 译 赏 -->
       <section class="sanlan">
+        <div class="lan card mingju" v-if="poem.famousNote">
+          <h3>名句</h3>
+          <p class="mj-line font-brush">「{{ poem.famousLine }}」</p>
+          <p class="mj-note">{{ poem.famousNote }}</p>
+        </div>
         <div class="lan card" v-if="poem.annotation">
           <h3>注</h3>
           <div class="zhuan">

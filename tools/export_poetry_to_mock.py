@@ -53,11 +53,11 @@ for row in q("SELECT id,name,IFNULL(zi,''),IFNULL(hao,''),dynasty,IFNULL(years,'
 poems = []
 for row in q("SELECT m.id,m.title,IFNULL(m.subtitle,''),m.poet_id,m.dynasty,IFNULL(m.genre,''),"
              "m.paragraphs,IFNULL(m.annotation,''),IFNULL(m.translation,''),IFNULL(m.appreciation,''),"
-             "IFNULL(m.mood,''),IFNULL(m.famous_line,''),p.name FROM poem m "
+             "IFNULL(m.mood,''),IFNULL(m.famous_line,''),IFNULL(m.famous_note,''),p.name FROM poem m "
              "JOIN poet p ON p.id=m.poet_id WHERE m.tier=1 ORDER BY m.id"):
     poems.append(dict(zip(['id', 'title', 'subtitle', 'poetId', 'dynasty', 'genre', 'paragraphs',
                            'annotation', 'translation', 'appreciation', 'mood', 'famousLine',
-                           'poetName'], [cast(x) for x in row])))
+                           'poetName', 'famousNote'], [cast(x) for x in row])))
 
 tracks = []
 for row in q("SELECT s.id,s.name,s.poem_id,s.track_kind,s.url,ROUND(s.duration,1),s.style "

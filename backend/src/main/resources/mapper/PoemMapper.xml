@@ -5,7 +5,7 @@
 
     <sql id="listCols">
         m.id, m.title, m.subtitle, m.poet_id, m.dynasty, m.genre, m.paragraphs,
-        m.mood, m.famous_line, m.tier, m.create_time,
+        m.mood, m.famous_line, m.famous_note, m.tier, m.create_time,
         p.name AS poet_name, p.years AS poet_years, p.title AS poet_title
     </sql>
 
