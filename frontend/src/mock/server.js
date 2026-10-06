@@ -773,6 +773,7 @@ export async function handle(ctx) {
         }
         if (method === 'GET' && seg[1] === 'page') {
           let list = POEMS.map(poemView)
+          if (ctx.query.tier) list = list.filter((m) => m.tier === Number(ctx.query.tier))
           if (ctx.query.dynasty) list = list.filter((m) => m.dynasty === ctx.query.dynasty)
           if (ctx.query.mood) list = list.filter((m) => m.mood === ctx.query.mood)
           if (ctx.query.keyword) {

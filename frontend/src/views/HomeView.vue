@@ -236,6 +236,10 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
           <span class="fu-seal font-brush">集</span>
           <div><h3>主题选集</h3><p>策展式组诗，边塞明月、田园归隐各成一番</p></div>
         </router-link>
+        <router-link to="/games" class="fun-card">
+          <span class="fu-seal font-brush">游</span>
+          <div><h3>诗游</h3><p>拼句、交游、地理——三款古诗小游戏</p></div>
+        </router-link>
         <router-link :to="`/poem/${today?.poem?.id || ''}`" class="fun-card" v-if="today?.poem">
           <span class="fu-seal font-brush">笺</span>
           <div><h3>诗笺</h3><p>竖排笺纸配朱砂印，一首诗制成一张可存的笺</p></div>

@@ -21,6 +21,7 @@ const navs = [
   { to: '/poets', label: '诗人' },
   { to: '/collections', label: '选集' },
   { to: '/feihua', label: '飞花令' },
+  { to: '/games', label: '诗游' },
   { to: '/study', label: '书斋' }
 ]
 
