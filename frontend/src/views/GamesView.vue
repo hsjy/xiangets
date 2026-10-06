@@ -104,7 +104,7 @@ async function chainSubmit() {
     st.chain++
     toast.success(`接上了！连${st.chain}轮`)
     // 2秒后自动出下一题
-    setTimeout(() => { if (tab.value === 'chain') newChain() }, 2000)
+    setTimeout(() => { if (tab.value === 'chain') newChain() }, 5000)
   } catch (e) {
     toast.error(e.message)
   }
@@ -205,7 +205,7 @@ function pairPick(opt) {
   if (st.correct) toast.success('答对了！')
   else toast.error(`正确答案是「${st.rel.relType}」`)
   // 答完 2 秒后自动出下一题
-  setTimeout(() => { if (tab.value === 'pair') newPair() }, 2000)
+  setTimeout(() => { if (tab.value === 'pair') newPair() }, 5000)
 }
 
 /* ========== 3. 地理 ========== */
@@ -243,7 +243,7 @@ function geoPick(opt) {
   if (st.correct) toast.success('答对了！')
   else toast.error(`正确答案是「${st.dynasty}」`)
   // 答完 2 秒后自动出下一题
-  setTimeout(() => { if (tab.value === 'geo') newGeo() }, 2000)
+  setTimeout(() => { if (tab.value === 'geo') newGeo() }, 5000)
 }
 </script>
 
