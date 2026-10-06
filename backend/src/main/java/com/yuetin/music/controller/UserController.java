@@ -39,6 +39,8 @@ public class UserController {
             m.put("name", u.getName());
             m.put("avatar", u.getAvatar());
             m.put("role", u.getRole());
+            m.put("points", u.getPoints() == null ? 0 : u.getPoints());
+            m.put("lockedUntil", u.getLockedUntil());
             m.put("createTime", u.getCreateTime());
             out.add(m);
         }
@@ -139,6 +141,17 @@ public class UserController {
         u.setLockedUntil(null);
         userMapper.update(u);
         return Result.ok();
+    }
+
+    /** 调整积分（管理员）：delta 可正可负。 */
+    @PostMapping("/user/points/{id}")
+    public Result<Map<String, Object>> adjustPoints(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        requireAdmin();
+        int delta = Integer.parseInt(String.valueOf(body.getOrDefault("delta", "0")));
+        userMapper.addPoints(id, delta);
+        User u = userMapper.findById(id);
+        if (u == null) throw BizException.notFound("用户不存在");
+        return Result.ok(Map.of("points", u.getPoints() == null ? 0 : u.getPoints()));
     }
 
     /** 解除登录锁定。 */

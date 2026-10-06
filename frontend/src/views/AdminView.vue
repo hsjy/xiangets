@@ -5,6 +5,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { adminApi, authApi } from '../api'
+import { levelOf } from '../utils/points'
 import { useUserStore } from '../stores/user'
 import { confirmAction } from '../stores/ui'
 import { toast } from '../utils/toast'
@@ -68,6 +69,17 @@ async function unlock(u) {
   } catch (e) { toast.error(e.message) }
 }
 
+async function adjPoints(u, delta) {
+  const label = delta > 0 ? `奖励「${u.name || u.username}」${delta} 积分` : `扣除「${u.name || u.username}」${-delta} 积分`
+  const yes = await confirmAction(`确定${label}吗？`, delta > 0 ? '积分奖励' : '积分扣除')
+  if (!yes) return
+  try {
+    const { data } = await authApi.adjustPoints(u.id, delta)
+    u.points = data.points
+    toast.success(`已${delta > 0 ? '奖励' : '扣除'}，当前 ${data.points} 分`)
+  } catch (e) { toast.error(e.message) }
+}
+
 async function deleteUser(u) {
   if (u.id === userStore.user?.id) return toast.error('不能注销自己')
   const yes = await confirmAction(`确定注销「${u.name || u.username}」吗？其收藏与感悟将一并删除。`, '注销账号')
@@ -115,7 +127,7 @@ onMounted(load)
       <div class="table-wrap card">
         <table class="tbl" data-test="admin-users">
           <thead>
-            <tr><th>用户</th><th>角色</th><th>注册时间</th><th>状态</th><th class="th-ops">操作</th></tr>
+            <tr><th>用户</th><th>角色</th><th>积分</th><th>注册时间</th><th>状态</th><th class="th-ops">操作</th></tr>
           </thead>
           <tbody>
             <tr v-for="u in filteredUsers" :key="u.id">
@@ -129,6 +141,10 @@ onMounted(load)
                 </div>
               </td>
               <td><span class="role" :class="u.role">{{ u.role === 'admin' ? '管理员' : '普通用户' }}</span></td>
+              <td class="pts-cell">
+                <span class="pts-num">{{ u.points ?? 0 }}</span>
+                <span class="pts-title">{{ levelOf(u.points ?? 0).title }}</span>
+              </td>
               <td>{{ formatDate(u.createTime) }}</td>
               <td>
                 <span v-if="lockedNow(u)" class="badge-lock">锁定中</span>
@@ -139,6 +155,8 @@ onMounted(load)
                 <button class="mini" v-if="u.role !== 'admin'" @click="setRole(u, 'admin')">设为管理员</button>
                 <button class="mini" v-else-if="u.id !== userStore.user?.id" @click="setRole(u, 'user')">降为普通用户</button>
                 <button class="mini" v-if="lockedNow(u)" @click="unlock(u)">解锁</button>
+                <button class="mini" @click="adjPoints(u, 50)" title="奖励 50 分">+50</button>
+                <button class="mini danger" v-if="(u.points ?? 0) >= 50" @click="adjPoints(u, -50)" title="扣回 50 分">-50</button>
                 <button class="mini danger" v-if="u.id !== userStore.user?.id" @click="deleteUser(u)">注销</button>
               </td>
             </tr>
@@ -214,4 +232,8 @@ onMounted(load)
 
 .pwd-card { margin-top: 18px; }
 .pc-sec { margin: 0 0 12px; font-size: 15px; }
+
+.pts-cell { white-space: nowrap; }
+.pts-num { font-weight: 600; color: var(--accent); font-size: 14px; }
+.pts-title { display: block; font-size: 11px; color: var(--text-3); }
 </style>

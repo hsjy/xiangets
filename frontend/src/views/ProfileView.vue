@@ -4,10 +4,14 @@ import { authApi } from '../api'
 import { useUserStore } from '../stores/user'
 import { toast } from '../utils/toast'
 import { formatDate } from '../utils/format'
+import { levelOf } from '../utils/points'
 import Icon from '../components/Icon.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 
 const userStore = useUserStore()
+
+// 挂载时刷新用户信息（积分可能被飞花令/管理员调整）
+userStore.fetchProfile()
 
 /* ---- 修改密码 ---- */
 const pwd = ref({ old: '', next: '', confirm: '' })
@@ -66,6 +70,7 @@ async function save() {
           <div class="uname">{{ userStore.user?.name }}</div>
           <div class="u-sub">
             @{{ userStore.user?.username }} · {{ userStore.isAdmin ? '管理员' : '普通用户' }}
+            <template v-if="userStore.user?.points != null"> · {{ levelOf(userStore.user.points).title }} · {{ userStore.user.points }} 分</template>
             <template v-if="userStore.user?.createTime"> · 注册于 {{ formatDate(userStore.user.createTime) }}</template>
           </div>
         </div>

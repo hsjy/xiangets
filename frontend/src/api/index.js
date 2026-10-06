@@ -11,7 +11,8 @@ export const authApi = {
   me: () => request.get('/auth/me'),
   pwdQuestion: (username) => request.get('/auth/pwd/question', { params: { username } }),
   pwdReset: (data) => request.post('/auth/pwd/reset', data),
-  changePassword: (data) => request.post('/auth/password', data)
+  changePassword: (data) => request.post('/auth/password', data),
+  adjustPoints: (id, delta) => request.post(`/user/points/${id}`, { delta })
 }
 
 /* 用户 */

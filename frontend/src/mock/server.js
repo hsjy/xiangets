@@ -192,7 +192,7 @@ export async function handle(ctx) {
         if (gate) return gate
         const db = loadDB()
         return ok(db.user.map((u) => ({ ...publicUser(u),
-          role: u.role, lockedUntil: u.lockedUntil || null })))
+          role: u.role, points: u.points ?? 0, lockedUntil: u.lockedUntil || null })))
       }
       if (method === 'PUT' && seg[1] === 'role' && seg[2]) {
         const { user, error } = await requireAuth(ctx)
@@ -222,6 +222,19 @@ export async function handle(ctx) {
         u.lockedUntil = null
         saveDB(db)
         return ok()
+      }
+      if (method === 'POST' && seg[1] === 'points' && seg[2]) {
+        const { user, error } = await requireAuth(ctx)
+        if (error) return error
+        const gate = requireAdmin(user)
+        if (gate) return gate
+        const db = loadDB()
+        const u = db.user.find((x) => x.id === Number(seg[2]))
+        if (!u) return fail(404, '用户不存在')
+        const delta = Number(ctx.body?.delta || 0)
+        u.points = Math.max(0, (u.points ?? 0) + delta)
+        saveDB(db)
+        return ok({ points: u.points })
       }
       if (method === 'POST' && seg[1] === 'unlock' && seg[2]) {
         const { user, error } = await requireAuth(ctx)
@@ -699,6 +712,11 @@ export async function handle(ctx) {
         if (line.length < 4) return fail(400, '太短了，至少写完整一句')
         const exists = POEMS.some((m) => normLine(m.paragraphs).includes(line))
         if (!exists) return fail(400, '诗库里没有找到这一句，再想想？')
+        const { user, error } = await requireAuth(ctx)
+        if (!error && user) {
+          user.points = (user.points ?? 0) + 10
+          saveDB(db)
+        }
         return ok({ ok: true })
       }
     }

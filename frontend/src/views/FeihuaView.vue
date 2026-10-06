@@ -4,11 +4,20 @@
  * 系统从 34 万首诗库随机抽句（行进卡片展示出处）；
  * 用户对句经后端校验（含令字 + 库中可查 + 未用过）。
  */
-import { ref, nextTick } from 'vue'
-import { feihuaApi, poetryApi } from '../api'
+import { ref, computed, onMounted, nextTick } from 'vue'
+import { feihuaApi, poetryApi, authApi } from '../api'
+import { levelOf } from '../utils/points'
 import { toast } from '../utils/toast'
 
 const CHAR_POOL = ['月', '花', '风', '山', '水', '云', '酒', '春', '夜', '江', '雪', '雨', '秋', '日', '天', '人']
+const myPoints = ref(null)
+const myLevel = computed(() => myPoints.value == null ? null : levelOf(myPoints.value))
+onMounted(async () => {
+  try {
+    const { data } = await authApi.me()
+    myPoints.value = data.points || 0
+  } catch { /* 未登录不计 */ }
+})
 const char = ref('')
 const customChar = ref('')
 const started = ref(false)
@@ -64,6 +73,11 @@ async function submit() {
     used.value.push(norm(line))
     rounds.value.push({ who: 'me', line })
     myLine.value = ''
+    // 对上一句 +10 分
+    try {
+      const { data } = await authApi.me()
+      myPoints.value = data.points || 0
+    } catch { /* ignore */ }
     await systemTurn()
   } catch (e) {
     toast.error(e.message)
@@ -94,7 +108,12 @@ async function randomChar() {
 
     <!-- 未开局：选令字 -->
     <section v-if="!started" class="setup card">
-      <h3 class="setup-title">择一令字，或让它替你拈一个</h3>
+      <div class="setup-head">
+        <h3 class="setup-title">择一令字，或让它替你拈一个</h3>
+        <span class="pts-badge" v-if="myPoints != null" data-test="feihua-points">
+          {{ levelOf(myPoints).title }} · {{ myPoints }} 分
+        </span>
+      </div>
       <div class="chars">
         <button v-for="c in CHAR_POOL" :key="c" class="char-tag" @click="start(c)">{{ c }}</button>
       </div>
@@ -111,6 +130,9 @@ async function randomChar() {
         <div class="board-head">
           <span class="cur-char font-brush" :data-test="'feihua-char'">{{ char }}</span>
           <span class="board-meta">令字「{{ char }}」 · 已行 {{ rounds.length }} 句</span>
+          <span class="pts-badge" v-if="myPoints != null" data-test="feihua-points">
+            {{ levelOf(myPoints).title }} · {{ myPoints }} 分
+          </span>
           <button v-if="!over" class="btn btn-ghost btn-sm" @click="giveUp">认输</button>
           <button class="btn btn-ghost btn-sm" @click="started = false">换令字</button>
         </div>
@@ -121,6 +143,7 @@ async function randomChar() {
             <div class="said">
               <p class="line">{{ r.line }}</p>
               <p class="from" v-if="r.who === 'sys'">—— 《{{ r.title }}》 · {{ r.poetName }}</p>
+              <p class="gain" v-if="r.who === 'me'">+10 分</p>
             </div>
           </div>
           <div v-if="loading" class="round sys"><span class="who">诗库</span><div class="said"><p class="line thinking">正在翻检诗库…</p></div></div>
@@ -145,7 +168,7 @@ async function randomChar() {
 
 <style scoped>
 .setup { padding: 26px 28px; }
-.setup-title { margin: 0 0 16px; font-size: 16px; }
+
 .chars { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
 .char-tag {
   width: 44px; height: 44px;
@@ -193,4 +216,14 @@ async function randomChar() {
 .my-turn .input { flex: 1; }
 .over { text-align: center; padding: 16px 0 6px; }
 .over p { margin: 0 0 14px; color: var(--text-2); }
+
+.pts-badge {
+  font-size: 12px; color: var(--accent);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px; padding: 3px 12px;
+}
+.gain { font-size: 11.5px; color: var(--accent); font-style: italic; }
+
+.setup-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.setup-title { margin: 0; font-size: 16px; }
 </style>

@@ -20,4 +20,7 @@ public interface UserMapper {
     int deleteById(@Param("id") Long id);
 
     long countAll();
+
+    /** 积分变动：delta 可正可负，结果不低于 0 */
+    int addPoints(@Param("id") Long id, @Param("delta") int delta);
 }

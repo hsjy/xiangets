@@ -18,6 +18,7 @@ import java.util.Map;
 public class FeihuaService {
 
     private final PoemMapper poemMapper;
+    private final com.yuetin.music.mapper.UserMapper userMapper;
 
     public Map<String, Object> draw(String ch, List<String> exclude) {
         if (ch == null || ch.isBlank() || ch.length() != 1) {
@@ -52,6 +53,9 @@ public class FeihuaService {
         }
         long hit = poemMapper.countLineExists(n);
         if (hit == 0) throw BizException.badRequest("诗库里没有找到这一句，再想想？");
+        // 每对上一句 +10 分（匿名游玩不计分）
+        Long uid = com.yuetin.music.common.UserContext.id();
+        if (uid != null) userMapper.addPoints(uid, 10);
         return Map.of("ok", true);
     }
 

@@ -4,7 +4,7 @@
 <mapper namespace="com.yuetin.music.mapper.UserMapper">
 
     <sql id="cols">
-        id, username, password, name, avatar, email, phone, sex, birth, intro, role, create_time, pwd_question, pwd_answer, failed_count, locked_until
+        id, username, password, name, avatar, email, phone, sex, birth, intro, role, create_time, pwd_question, pwd_answer, failed_count, locked_until, points
     </sql>
 
     <select id="findById" resultType="User">
@@ -60,4 +60,8 @@
     <select id="countAll" resultType="long">
         SELECT COUNT(*) FROM `user`
     </select>
+
+    <update id="addPoints">
+        UPDATE `user` SET points = GREATEST(0, points + #{delta}) WHERE id = #{id}
+    </update>
 </mapper>

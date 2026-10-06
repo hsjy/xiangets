@@ -29,4 +29,6 @@ public class User {
     private String pwdAnswer;
     private Integer failedCount;
     private Date lockedUntil;
+    /** 飞花令等互动累计积分 */
+    private Integer points;
 }
