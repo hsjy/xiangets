@@ -59,6 +59,22 @@ public class FeihuaService {
         return Map.of("ok", true);
     }
 
+    /** 诗词接龙：校验诗句是否以指定字开头且在库中存在 */
+    public Map<String, Object> chain(String startChar, String line, List<String> exclude) {
+        if (startChar == null || startChar.length() != 1) throw BizException.badRequest("起始字须为单个汉字");
+        if (line == null || line.trim().length() < 4) throw BizException.badRequest("诗句太短");
+        String n = norm(line);
+        if (!n.startsWith(startChar)) throw BizException.badRequest("诗句必须以「" + startChar + "」开头");
+        if (exclude != null && exclude.stream().anyMatch(e -> norm(e).equals(n))) {
+            throw BizException.badRequest("这句已经用过了");
+        }
+        long hit = poemMapper.countLineExists(n);
+        if (hit == 0) throw BizException.badRequest("诗库里没有找到这一句，再想想？");
+        Long uid = com.yuetin.music.common.UserContext.id();
+        if (uid != null) userMapper.addPoints(uid, 10);
+        return Map.of("ok", true);
+    }
+
     private String norm(String s) {
         return s == null ? "" : s.replaceAll("[，。？！；、：''\"\"\\s]", "");
     }

@@ -6,17 +6,18 @@
  * 3. 地理：看诗人的行旅地点，猜朝代
  */
 import { ref, computed, onMounted } from 'vue'
-import { poetryApi } from '../api'
+import { poetryApi, feihuaApi } from '../api'
 import { toast } from '../utils/toast'
 
 /* ========== 全局状态 ========== */
-const tab = ref('shuffle')  // shuffle | pair | geo
+const tab = ref('shuffle')  // shuffle | pair | geo | chain
 const loading = ref(true)
 
 const tabs = [
   { id: 'shuffle', label: '拼句', desc: '名句打乱，按序拼回' },
   { id: 'pair', label: '交游', desc: '两位诗人，关系为何' },
-  { id: 'geo', label: '地理', desc: '行旅地点，猜其朝代' }
+  { id: 'geo', label: '地理', desc: '行旅地点，猜其朝代' },
+  { id: 'chain', label: '接龙', desc: '以字接句，诗词连连看' }
 ]
 
 /* ========== 数据源 ========== */
@@ -64,6 +65,50 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+/* ========== 4. 接龙 ========== */
+const chainState = ref(null)
+
+function newChain() {
+  const pool = poems.value.filter(p => p.famousLine)
+  if (!pool.length) return
+  const p = pool[Math.floor(Math.random() * pool.length)]
+  const line = p.famousLine
+  const lastChar = norm(line).slice(-1)
+  chainState.value = {
+    lastChar,
+    prevLine: line,
+    prevPoet: p.poetName,
+    prevTitle: p.title + (p.subtitle ? '·' + p.subtitle : ''),
+    answer: '',
+    used: [],
+    done: false,
+    correct: false,
+    chain: 1,       // 第几轮
+    input: ''
+  }
+}
+
+const norm = (s) => (s || '').replace(/[，。？！；、：""''\s]/g, '')
+
+async function chainSubmit() {
+  const st = chainState.value
+  if (!st || st.done || !st.input.trim()) return
+  try {
+    await feihuaApi.chain(st.lastChar, st.input.trim(), st.used)
+    st.answer = st.input.trim()
+    st.used.push(norm(st.input))
+    st.done = true
+    st.correct = true
+    // 接龙计分
+    st.chain++
+    toast.success(`接上了！连${st.chain}轮`)
+    // 2秒后自动出下一题
+    setTimeout(() => { if (tab.value === 'chain') newChain() }, 2000)
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
 
 /* ========== 1. 拼句 ========== */
 const shuffleState = ref(null)
@@ -159,6 +204,8 @@ function pairPick(opt) {
   st.done = true
   if (st.correct) toast.success('答对了！')
   else toast.error(`正确答案是「${st.rel.relType}」`)
+  // 答完 2 秒后自动出下一题
+  setTimeout(() => { if (tab.value === 'pair') newPair() }, 2000)
 }
 
 /* ========== 3. 地理 ========== */
@@ -195,6 +242,8 @@ function geoPick(opt) {
   st.done = true
   if (st.correct) toast.success('答对了！')
   else toast.error(`正确答案是「${st.dynasty}」`)
+  // 答完 2 秒后自动出下一题
+  setTimeout(() => { if (tab.value === 'geo') newGeo() }, 2000)
 }
 </script>
 
@@ -213,7 +262,7 @@ function geoPick(opt) {
       <div class="game-tabs">
         <button v-for="t in tabs" :key="t.id"
           class="game-tab" :class="{ on: tab === t.id }"
-          @click="tab = t.id; if (t.id === 'shuffle') newShuffle(); if (t.id === 'pair') newPair(); if (t.id === 'geo') newGeo()"
+          @click="tab = t.id; if (t.id === 'shuffle') newShuffle(); if (t.id === 'pair') newPair(); if (t.id === 'geo') newGeo(); if (t.id === 'chain') newChain()"
           :data-test="'tab-' + t.id"
         >
           <span class="gt-label">{{ t.label }}</span>
@@ -317,6 +366,34 @@ function geoPick(opt) {
           </div>
         </template>
       </section>
+
+      <!-- ===== 接龙 ===== -->
+      <section v-if="tab === 'chain'" class="game-area card">
+        <div v-if="!chainState" class="game-empty">
+          <button class="btn btn-primary" @click="newChain" data-test="chain-start">开始接龙</button>
+        </div>
+        <template v-else>
+          <div class="gs-head">
+            <span class="gs-meta">上一句以「<b>{{ chainState.lastChar }}</b>」结尾，请接出以「<b>{{ chainState.lastChar }}</b>」开头的诗句</span>
+            <button class="btn btn-ghost btn-sm" @click="newChain">换一题</button>
+          </div>
+          <div class="chain-prev">
+            <span class="cp-line font-brush">「{{ chainState.prevLine }}」</span>
+            <span class="cp-src">——《{{ chainState.prevTitle }}》 · {{ chainState.prevPoet }}</span>
+          </div>
+          <div class="chain-round" v-if="chainState.chain > 1">已连 {{ chainState.chain }} 轮</div>
+          <form class="my-turn" @submit.prevent="chainSubmit">
+            <input
+              v-model="chainState.input" class="input"
+              :placeholder="`以「${chainState.lastChar}」开头的诗句…`" data-test="chain-input"
+            />
+            <button class="btn btn-primary" type="submit" data-test="chain-submit">接句</button>
+          </form>
+          <div class="gs-foot" v-if="chainState.correct">
+            <span class="ok-text">接上了！✓</span>
+          </div>
+        </template>
+      </section>
     </template>
   </div>
 </template>
@@ -400,4 +477,10 @@ function geoPick(opt) {
 .gp-period { margin-left: 14px; font-size: 12px; color: var(--accent); }
 .ok-text { color: var(--accent); }
 .bad-text { color: var(--danger); }
+
+.chain-prev { text-align: center; margin: 24px 0 8px; }
+.cp-line { font-size: 22px; letter-spacing: 2px; color: var(--text); display: block; margin-bottom: 6px; }
+.cp-src { font-size: 12px; color: var(--text-3); }
+.chain-round { text-align: center; font-size: 12px; color: var(--accent); margin-bottom: 12px; }
+.ok-text { color: var(--accent); font-weight: 600; }
 </style>

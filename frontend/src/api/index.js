@@ -161,3 +161,11 @@ export const friendApi = {
   adminAll: () => request.get('/friend/admin/all'),
   adminMessages: (limit) => request.get('/friend/admin/messages', { params: { limit } })
 }
+
+/* 关注 */
+export const followApi = {
+  toggle: (userId) => request.post(`/follow/toggle/${userId}`),
+  following: () => request.get('/follow/following'),
+  followers: () => request.get('/follow/followers'),
+  info: (userId) => request.get(`/follow/info/${userId}`)
+}

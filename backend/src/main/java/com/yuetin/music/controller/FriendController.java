@@ -63,6 +63,28 @@ public class FriendController {
         return Result.ok(friendService.sendMessage(friendId, String.valueOf(body.get("content"))));
     }
 
+    /* ---- 关注 ---- */
+
+    @PostMapping("/follow/toggle/{userId}")
+    public Result<Map<String, Object>> toggleFollow(@PathVariable Long userId) {
+        return Result.ok(friendService.toggleFollow(userId));
+    }
+
+    @GetMapping("/follow/following")
+    public Result<List<Map<String, Object>>> following() {
+        return Result.ok(friendService.following());
+    }
+
+    @GetMapping("/follow/followers")
+    public Result<List<Map<String, Object>>> followers() {
+        return Result.ok(friendService.followers());
+    }
+
+    @GetMapping("/follow/info/{userId}")
+    public Result<Map<String, Object>> followInfo(@PathVariable Long userId) {
+        return Result.ok(friendService.followInfo(userId));
+    }
+
     /* ---- 管理员 ---- */
 
     @GetMapping("/friend/admin/all")

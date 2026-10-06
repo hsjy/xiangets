@@ -48,4 +48,11 @@ public interface FriendMapper {
 
     /** 管理员：全部消息 */
     List<Map<String, Object>> adminAllMessages(@Param("limit") int limit);
+
+    int insertFollow(@Param("followerId") Long followerId, @Param("followingId") Long followingId);
+    int deleteFollow(@Param("followerId") Long followerId, @Param("followingId") Long followingId);
+    int isFollowing(@Param("followerId") Long followerId, @Param("followingId") Long followingId);
+    List<Map<String, Object>> listFollowing(@Param("userId") Long userId);
+    List<Map<String, Object>> listFollowers(@Param("userId") Long userId);
+    int followCount(@Param("userId") Long userId);
 }

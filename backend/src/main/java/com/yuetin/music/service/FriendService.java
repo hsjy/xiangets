@@ -139,6 +139,40 @@ public class FriendService {
         return friendMapper.adminAllMessages(Math.min(500, Math.max(1, limit)));
     }
 
+    /* ---------------- 关注 ---------------- */
+
+    /** 关注/取消关注（切换）。 */
+    public Map<String, Object> toggleFollow(Long targetId) {
+        Long me = uid();
+        if (targetId.equals(me)) throw BizException.badRequest("不能关注自己");
+        if (userMapper.findById(targetId) == null) throw BizException.notFound("用户不存在");
+        int following = friendMapper.isFollowing(me, targetId);
+        if (following > 0) {
+            friendMapper.deleteFollow(me, targetId);
+            return Map.of("following", false, "count", friendMapper.followCount(targetId));
+        }
+        friendMapper.insertFollow(me, targetId);
+        return Map.of("following", true, "count", friendMapper.followCount(targetId));
+    }
+
+    /** 我关注的。 */
+    public List<Map<String, Object>> following() {
+        return friendMapper.listFollowing(uid());
+    }
+
+    /** 我的粉丝。 */
+    public List<Map<String, Object>> followers() {
+        return friendMapper.listFollowers(uid());
+    }
+
+    /** 某人的粉丝数。 */
+    public Map<String, Object> followInfo(Long userId) {
+        return Map.of(
+                "count", friendMapper.followCount(userId),
+                "isFollowing", friendMapper.isFollowing(uid(), userId) > 0
+        );
+    }
+
     private void requireAdmin() {
         var cu = UserContext.get();
         if (cu == null) throw BizException.unauthorized("请先登录");

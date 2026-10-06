@@ -26,6 +26,16 @@ public class FeihuaController {
         return Result.ok(feihuaService.check(ch, line, exclude));
     }
 
+    /** 诗词接龙：校验用户给的诗句是否以指定字开头 */
+    @PostMapping("/feihua/chain")
+    public Result<Map<String, Object>> chain(@RequestBody Map<String, Object> body) {
+        String startChar = String.valueOf(body.getOrDefault("char", ""));
+        String line = String.valueOf(body.getOrDefault("line", ""));
+        @SuppressWarnings("unchecked")
+        List<String> exclude = (List<String>) body.get("exclude");
+        return Result.ok(feihuaService.chain(startChar, line, exclude));
+    }
+
     @PostMapping("/feihua/draw")
     public Result<Map<String, Object>> draw(@RequestBody Map<String, Object> body) {
         String ch = String.valueOf(body.getOrDefault("char", ""));

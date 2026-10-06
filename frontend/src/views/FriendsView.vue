@@ -1,16 +1,17 @@
 <script setup>
 /**
- * 好友：搜索加友 / 请求管理 / 好友列表 / 私信聊天
+ * 好友：搜索加友 / 请求管理 / 好友列表 / 私信聊天 / 关注
+ * 会话框采用古风设计：宣纸底、墨色边框、书法字体标题
  */
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import { friendApi } from '../api'
+import { friendApi, followApi } from '../api'
 import { useUserStore } from '../stores/user'
 import { toast } from '../utils/toast'
 import UserAvatar from '../components/UserAvatar.vue'
 import { formatDate } from '../utils/format'
 
 const userStore = useUserStore()
-const tab = ref('friends')    // friends | incoming | outgoing
+const tab = ref('friends')    // friends | incoming | outgoing | following | followers
 const searchKey = ref('')
 const searchResults = ref([])
 const searching = ref(false)
@@ -18,38 +19,43 @@ const searching = ref(false)
 const friends = ref([])
 const incoming = ref([])
 const outgoing = ref([])
+const following = ref([])
+const followers = ref([])
 const loading = ref(true)
 
 /* 聊天 */
-const activeFriend = ref(null)    // {friendId, name, username, avatar}
+const activeFriend = ref(null)
 const messages = ref([])
 const chatText = ref('')
 const chatRef = ref(null)
 const sending = ref(false)
 
 const tabs = [
-  { id: 'friends', label: '我的好友' },
-  { id: 'incoming', label: '待处理' },
-  { id: 'outgoing', label: '已发出' }
+  { id: 'friends', label: '好友' },
+  { id: 'incoming', label: '请求' },
+  { id: 'outgoing', label: '已发出' },
+  { id: 'following', label: '关注' },
+  { id: 'followers', label: '粉丝' }
 ]
 
 async function load() {
   loading.value = true
   try {
-    const [f, inc, out] = await Promise.allSettled([
-      friendApi.list(), friendApi.incoming(), friendApi.outgoing()
+    const [f, inc, out, fol, fols] = await Promise.allSettled([
+      friendApi.list(), friendApi.incoming(), friendApi.outgoing(),
+      followApi.following(), followApi.followers()
     ])
     if (f.status === 'fulfilled') friends.value = f.value.data
     if (inc.status === 'fulfilled') incoming.value = inc.value.data
     if (out.status === 'fulfilled') outgoing.value = out.value.data
+    if (fol.status === 'fulfilled') following.value = fol.value.data
+    if (fols.status === 'fulfilled') followers.value = fols.value.data
   } finally {
     loading.value = false
   }
 }
-
 onMounted(load)
 
-/* 搜索 */
 async function doSearch() {
   const k = searchKey.value.trim()
   if (!k) return
@@ -70,9 +76,7 @@ async function addFriend(username) {
     toast.success(`已向「${username}」发送好友请求`)
     searchResults.value = searchResults.value.map(r =>
       r.username === username ? { ...r, relation: 'pending' } : r)
-  } catch (e) {
-    toast.error(e.message)
-  }
+  } catch (e) { toast.error(e.message) }
 }
 
 async function respond(relId, accept) {
@@ -80,14 +84,11 @@ async function respond(relId, accept) {
     await friendApi.respond(relId, accept)
     toast.success(accept ? '已同意' : '已拒绝')
     await load()
-  } catch (e) {
-    toast.error(e.message)
-  }
+  } catch (e) { toast.error(e.message) }
 }
 
 async function removeFriend(relId) {
-  const yes = await confirm(`确定删除这位好友吗？`)
-  if (!yes) return
+  if (!confirm('确定删除这位好友吗？')) return
   try {
     await friendApi.remove(relId)
     toast.success('已删除好友')
@@ -96,9 +97,16 @@ async function removeFriend(relId) {
       messages.value = []
     }
     await load()
-  } catch (e) {
-    toast.error(e.message)
-  }
+  } catch (e) { toast.error(e.message) }
+}
+
+/* 关注 */
+async function toggleFollow(u) {
+  try {
+    const { data } = await followApi.toggle(u.id)
+    u.following = data.following
+    toast.success(data.following ? `已关注 ${u.name}` : `已取消关注 ${u.name}`)
+  } catch (e) { toast.error(e.message) }
 }
 
 /* 聊天 */
@@ -108,17 +116,13 @@ async function openChat(friend) {
     const { data } = await friendApi.messages(friend.friendId)
     messages.value = data.messages
     friend.unread = data.unread
-  } catch (e) {
-    toast.error(e.message)
-  }
+  } catch (e) { toast.error(e.message) }
   await nextTick()
   scrollChat()
 }
-
 function scrollChat() {
   if (chatRef.value) chatRef.value.scrollTop = chatRef.value.scrollHeight
 }
-
 async function sendMsg() {
   const content = chatText.value.trim()
   if (!content || sending.value || !activeFriend.value) return
@@ -130,11 +134,7 @@ async function sendMsg() {
     messages.value = data.messages
     await nextTick()
     scrollChat()
-  } catch (e) {
-    toast.error(e.message)
-  } finally {
-    sending.value = false
-  }
+  } catch (e) { toast.error(e.message) } finally { sending.value = false }
 }
 
 const pendingCount = computed(() => incoming.value.length)
@@ -145,7 +145,7 @@ const pendingCount = computed(() => incoming.value.length)
     <div class="page-head">
       <div>
         <h1 class="page-title">好友</h1>
-        <p class="page-sub">以诗会友——搜索用户名添加，互相关注后可私信</p>
+        <p class="page-sub">以诗会友 · 搜索用户名添加，互相关注后可私信</p>
       </div>
     </div>
 
@@ -163,14 +163,17 @@ const pendingCount = computed(() => incoming.value.length)
 
       <div v-if="searchResults.length" class="search-results card">
         <div v-for="u in searchResults" :key="u.id" class="sr-item">
-          <UserAvatar :name="u.name" :size="32" circle />
+          <UserAvatar :name="u.name" :size="34" circle />
           <div class="sr-info">
             <span class="sr-name">{{ u.name }}</span>
             <span class="sr-uname">@{{ u.username }}</span>
           </div>
-          <button v-if="u.relation === 'none'" class="btn btn-ghost btn-sm" @click="addFriend(u.username)">加好友</button>
+          <button v-if="u.relation === 'none'" class="btn btn-ghost btn-xs" @click="addFriend(u.username)">加好友</button>
           <span v-else-if="u.relation === 'pending'" class="sr-status">已请求</span>
           <span v-else class="sr-status ok">已是好友</span>
+          <button class="btn btn-ghost btn-xs follow-btn" @click="toggleFollow(u)" :class="{ on: u.following }">
+            {{ u.following ? '✓ 已关注' : '+ 关注' }}
+          </button>
         </div>
       </div>
 
@@ -184,7 +187,7 @@ const pendingCount = computed(() => incoming.value.length)
         </button>
       </div>
 
-      <!-- 好友列表 + 聊天 -->
+      <!-- 列表 + 聊天 -->
       <div class="friends-layout">
         <div class="friend-list card">
           <!-- 好友 -->
@@ -231,30 +234,62 @@ const pendingCount = computed(() => incoming.value.length)
               <span class="sr-status">等待中</span>
             </div>
           </template>
+
+          <!-- 关注 -->
+          <template v-if="tab === 'following'">
+            <div v-if="!following.length" class="empty-hint">还没有关注任何人</div>
+            <div v-for="u in following" :key="u.id" class="friend-item">
+              <UserAvatar :name="u.name" :size="36" circle />
+              <div class="fi-info">
+                <span class="fi-name">{{ u.name }}</span>
+                <span class="fi-uname">@{{ u.username }}</span>
+              </div>
+            </div>
+          </template>
+
+          <!-- 粉丝 -->
+          <template v-if="tab === 'followers'">
+            <div v-if="!followers.length" class="empty-hint">还没有粉丝</div>
+            <div v-for="u in followers" :key="u.id" class="friend-item">
+              <UserAvatar :name="u.name" :size="36" circle />
+              <div class="fi-info">
+                <span class="fi-name">{{ u.name }}</span>
+                <span class="fi-uname">@{{ u.username }}</span>
+              </div>
+            </div>
+          </template>
         </div>
 
-        <!-- 聊天面板 -->
+        <!-- 古风会话框 -->
         <div class="chat-panel card" v-if="activeFriend">
           <div class="cp-head">
-            <UserAvatar :name="activeFriend.name" :size="32" circle />
-            <span class="cp-name">{{ activeFriend.name }}</span>
+            <UserAvatar :name="activeFriend.name" :size="34" circle />
+            <div class="cp-title">
+              <span class="cp-name font-brush">{{ activeFriend.name }}</span>
+              <span class="cp-seal">笺</span>
+            </div>
             <button class="cp-close" @click="activeFriend = null">✕</button>
           </div>
           <div ref="chatRef" class="cp-body" data-test="chat-body">
-            <div v-for="m in messages" :key="m.id" class="msg" :class="{ mine: m.senderId === userStore.user?.id }">
-              <p class="msg-text">{{ m.content }}</p>
+            <div v-for="(m, i) in messages" :key="m.id"
+              class="msg" :class="{ mine: m.senderId === userStore.user?.id }"
+            >
+              <div class="msg-bubble">
+                <p class="msg-text">{{ m.content }}</p>
+              </div>
             </div>
-            <div v-if="!messages.length" class="empty-hint">发条消息，以诗会友</div>
+            <div v-if="!messages.length" class="empty-hint">写条消息，以诗会友</div>
           </div>
           <form class="cp-foot" @submit.prevent="sendMsg">
-            <input v-model="chatText" class="input" maxlength="500"
+            <input v-model="chatText" class="input cp-input" maxlength="500"
               placeholder="写点什么…" data-test="chat-input"
             />
-            <button class="btn btn-primary btn-sm" :disabled="sending" data-test="chat-send">发送</button>
+            <button class="btn btn-primary btn-sm cp-send" :disabled="sending" data-test="chat-send">发送</button>
           </form>
         </div>
         <div v-else class="chat-empty card">
-          <p>选择一位好友开始对话</p>
+          <div class="ce-icon font-brush">笺</div>
+          <p>选择一位好友，以诗会友</p>
         </div>
       </div>
     </template>
@@ -265,7 +300,7 @@ const pendingCount = computed(() => incoming.value.length)
 .search-bar { display: flex; gap: 10px; padding: 12px 16px; margin-bottom: 12px; align-items: center; }
 .search-bar .input { flex: 1; }
 
-.search-results { padding: 10px 14px; margin-bottom: 16px; max-height: 220px; overflow-y: auto; }
+.search-results { padding: 10px 14px; margin-bottom: 16px; max-height: 200px; overflow-y: auto; }
 .sr-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .sr-item:last-child { border-bottom: none; }
 .sr-info { flex: 1; display: flex; flex-direction: column; }
@@ -273,13 +308,15 @@ const pendingCount = computed(() => incoming.value.length)
 .sr-uname { font-size: 12px; color: var(--text-3); }
 .sr-status { font-size: 12.5px; color: var(--text-3); }
 .sr-status.ok { color: var(--accent); }
+.follow-btn { font-size: 11.5px; padding: 3px 8px; }
+.follow-btn.on { color: var(--accent); border-color: var(--accent); }
 
-.tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
 .tab-btn {
   position: relative;
   border: 1px solid var(--border-strong); background: var(--card);
-  color: var(--text-2); border-radius: 999px; padding: 6px 18px;
-  font-size: 13px; cursor: pointer;
+  color: var(--text-2); border-radius: 999px; padding: 6px 16px;
+  font-size: 13px; cursor: pointer; transition: all 0.15s;
 }
 .tab-btn.on { background: var(--primary); border-color: var(--primary); color: #fbf6ea; }
 .tab-badge {
@@ -308,27 +345,77 @@ const pendingCount = computed(() => incoming.value.length)
 }
 .fi-actions { display: flex; gap: 6px; }
 
-.chat-panel { display: flex; flex-direction: column; height: 520px; }
-.chat-empty { display: flex; align-items: center; justify-content: center; height: 520px; color: var(--text-3); font-size: 13px; }
-.cp-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
-.cp-name { font-weight: 600; font-size: 14px; }
-.cp-close { margin-left: auto; border: none; background: none; color: var(--text-3); cursor: pointer; }
+/* ===== 古风会话框 ===== */
+.chat-panel {
+  display: flex; flex-direction: column; height: 520px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cp-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(184, 134, 11, 0.06), transparent);
+}
+.cp-title { display: flex; align-items: center; gap: 6px; }
+.cp-name { font-size: 16px; letter-spacing: 2px; }
+.cp-seal {
+  width: 20px; height: 20px;
+  border-radius: 3px;
+  background: var(--seal); color: #fbf6ea;
+  font-size: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Ma Shan Zheng', 'LXGW WenKai', serif;
+}
+.cp-close { margin-left: auto; border: none; background: none; color: var(--text-3); cursor: pointer; font-size: 15px; }
 .cp-close:hover { color: var(--seal); }
-.cp-body { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+
+.cp-body {
+  flex: 1; overflow-y: auto; padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
 .msg { display: flex; }
 .msg.mine { justify-content: flex-end; }
-.msg-text {
-  margin: 0; padding: 8px 14px;
-  border-radius: 12px; max-width: 70%;
-  font-size: 13.5px; line-height: 1.8;
-  background: var(--card-hover); color: var(--text);
+.msg-bubble {
+  max-width: 72%;
+  padding: 10px 16px;
+  border-radius: 4px 12px 12px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  position: relative;
 }
-.msg.mine .msg-text { background: var(--primary); color: #fbf6ea; }
-.cp-foot { display: flex; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--border); align-items: center; }
-.cp-foot .input { flex: 1; }
+.msg.mine .msg-bubble {
+  border-radius: 12px 4px 12px 12px;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.msg-text { margin: 0; font-size: 14px; line-height: 1.9; color: var(--text); }
+.msg.mine .msg-text { color: #fbf6ea; }
 
+.cp-foot {
+  display: flex; gap: 10px; padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+  background: linear-gradient(0deg, rgba(184, 134, 11, 0.04), transparent);
+}
+.cp-input { flex: 1; }
+.cp-send { flex-shrink: 0; }
+
+.chat-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 520px; color: var(--text-3); font-size: 13px; gap: 12px;
+}
+.ce-icon {
+  width: 48px; height: 48px;
+  border-radius: 8px;
+  background: var(--seal); color: #fbf6ea;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  opacity: 0.35;
+}
 .empty-hint { text-align: center; color: var(--text-3); font-size: 13px; padding: 24px 0; }
-
 .btn-xs { padding: 3px 10px; font-size: 12px; }
 
 @media (max-width: 900px) {
