@@ -33,6 +33,35 @@ const inputRef = ref(null)
 
 const norm = (s) => (s || '').replace(/[，。？！；、：""''\s]/g, '')
 
+/* ---- 每轮倒计时：限时 30 秒，超时判败 ---- */
+const TIME_LIMIT = 30
+const timeLeft = ref(TIME_LIMIT)
+const timer = ref(null)
+const roundOver = ref(false)   // 本轮是否已结束（超时或已提交）
+
+function startTimer() {
+  stopTimer()
+  timeLeft.value = TIME_LIMIT
+  roundOver.value = false
+  timer.value = setInterval(() => {
+    if (timeLeft.value <= 0) {
+      stopTimer()
+      roundOver.value = true
+      // 超时判败：本轮结束，展示系统给出的那句
+      over.value = true
+      overReason.value = `超时了！诗库给出的是：「${rounds.value.find((r) => r.who === 'sys')?.line || ''}」——换个令字再来一局？`
+      return
+    }
+    timeLeft.value--
+  }, 1000)
+}
+
+function stopTimer() {
+  if (timer.value) { clearInterval(timer.value); timer.value = null }
+}
+
+const timerPct = computed(() => Math.round((timeLeft.value / TIME_LIMIT) * 100))
+
 function start(ch) {
   const c = (ch || '').trim()
   if (!/^[\u4e00-\u9fa5]$/.test(c)) {
@@ -56,6 +85,7 @@ async function systemTurn() {
     rounds.value.push({ who: 'sys', line: data.line, title: data.title, poetName: data.poetName })
     await nextTick()
     inputRef.value?.focus()
+    startTimer()
   } catch (e) {
     over.value = true
     overReason.value = e.message
@@ -66,8 +96,9 @@ async function systemTurn() {
 
 async function submit() {
   const line = myLine.value.trim()
-  if (!line || submitting.value || over.value) return
+  if (!line || submitting.value || over.value || roundOver.value) return
   submitting.value = true
+  stopTimer()
   try {
     await feihuaApi.check(char.value, line, used.value)
     used.value.push(norm(line))
@@ -87,8 +118,15 @@ async function submit() {
 }
 
 function giveUp() {
+  stopTimer()
   over.value = true
   overReason.value = '你认输了——「' + char.value + '」字句，诗库记你这一败。'
+}
+
+/** 超时后再来一轮（新开对局或接受本轮结果后重来） */
+function retry() {
+  stopTimer()
+  start(char.value)
 }
 
 async function randomChar() {
@@ -149,6 +187,15 @@ async function randomChar() {
           <div v-if="loading" class="round sys"><span class="who">诗库</span><div class="said"><p class="line thinking">正在翻检诗库…</p></div></div>
         </div>
 
+        <!-- 倒计时：限时作答 -->
+        <div class="timer-bar" v-if="!over && !loading && !roundOver" data-test="timer-bar">
+          <div class="timer-track">
+            <div class="timer-fill" :style="{ width: timerPct + '%' }"
+                 :class="{ urgent: timeLeft <= 10 }"></div>
+          </div>
+          <span class="timer-num" :class="{ urgent: timeLeft <= 10 }" data-test="timer-num">{{ timeLeft }}s</span>
+        </div>
+
         <div v-if="over" class="over">
           <p>{{ overReason }}</p>
           <button class="btn btn-primary" @click="start(char)">再来一局</button>
@@ -157,9 +204,11 @@ async function randomChar() {
         <form v-else class="my-turn" @submit.prevent="submit">
           <input
             ref="inputRef" v-model="myLine" class="input"
-            :placeholder="`写出一句含「${char}」的诗…`" data-test="feihua-input"
+            :disabled="roundOver"
+            :placeholder="roundOver ? '本轮超时，请重开一局' : `写出一句含「${char}」的诗…`"
+            data-test="feihua-input"
           />
-          <button class="btn btn-primary" type="submit" :disabled="submitting || loading" data-test="feihua-submit">对令</button>
+          <button class="btn btn-primary" type="submit" :disabled="submitting || loading || roundOver" data-test="feihua-submit">对令</button>
         </form>
       </section>
     </template>
@@ -226,4 +275,35 @@ async function randomChar() {
 
 .setup-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .setup-title { margin: 0; font-size: 16px; }
+
+.timer-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+.timer-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  transition: width 0.9s linear, background 0.3s;
+}
+.timer-fill.urgent { background: var(--seal); animation: pulse 0.9s ease infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+.timer-num {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  min-width: 32px;
+  text-align: right;
+}
+.timer-num.urgent { color: var(--seal); font-weight: 600; }
 </style>
