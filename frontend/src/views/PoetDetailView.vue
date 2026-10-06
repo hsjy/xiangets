@@ -85,7 +85,7 @@ watch(() => route.params.id, (id) => { if (id && route.path.startsWith('/poet/')
       </section>
 
       <!-- 人生行旅图 -->
-      <section class="journey card" v-if="journey">
+      <section class="journey card painting-band bg-bamboo" v-if="journey">
         <h2 class="story-title">
           <span class="stamp">{{ poet.name.slice(0, 1) }}</span>
           人生行旅图

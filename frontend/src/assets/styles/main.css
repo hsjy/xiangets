@@ -436,3 +436,30 @@ a { color: var(--primary-2); text-decoration: none; }
 [data-theme='dark'] ::selection { background: rgba(127, 165, 136, 0.3); }
 /* 地图与纸质感组件在夜读下的适配 */
 [data-theme='dark'] .map { filter: brightness(0.82) contrast(1.02); }
+
+/* ========== 古画背景（公有领域 CC0）==========
+ * 倪瓒《余山图》·赵孟頫《竹石幽兰》·汪士慎《墨梅》·巨然《清溪幽隐》·倪瓒《疏林远岫》
+ * 来源：Met Museum Open Access / Cleveland Museum CC0
+ * 用法：.bg-painting 系列类；opacity 控制在 6%~15%
+ */
+.painting-band {
+  position: relative;
+  overflow: hidden;
+}
+.painting-band::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.08;
+  z-index: 0;
+}
+.painting-band > * { position: relative; z-index: 1; }
+
+.bg-nizan::before { background-image: url('../paintings/nizan-wuyu.jpg'); }
+.bg-nizan-shulin::before { background-image: url('../paintings/nizan-shulin.jpg'); }
+.bg-bamboo::before { background-image: url('../paintings/zhaomengfu-bamboo.jpg'); background-size: cover; }
+.bg-plum::before { background-image: url('../paintings/wangshishen-plum.jpg'); }
+.bg-juran::before { background-image: url('../paintings/juran-streams.jpg'); background-size: cover; }

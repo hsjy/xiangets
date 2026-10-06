@@ -282,7 +282,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
     <div v-else-if="!poem" class="empty">诗不存在</div>
     <template v-else>
       <!-- 意境卷首 -->
-      <section class="jing-hero">
+      <section class="jing-hero painting-band bg-nizan">
         <div class="mountain" />
         <div class="jing-grid">
           <!-- 竖排诗行 -->
