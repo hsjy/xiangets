@@ -18,4 +18,11 @@ public class Comment {
     private String avatar;
     /** 感悟查询时带出诗题 */
     private String poemTitle;
+
+    /** 互动：父感悟（NULL=主感悟）；展示用点赞数与是否已赞 */
+    private Long parentId;
+    private Integer likeCount;
+    private Boolean likedByMe;
+    /** 回复对象的用户名（回复某条感悟时展示「回复 @xx」） */
+    private String replyTo;
 }

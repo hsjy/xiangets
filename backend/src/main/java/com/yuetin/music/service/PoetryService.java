@@ -156,26 +156,19 @@ public class PoetryService {
         return poemFavoriteMapper.listByUser(requireLogin());
     }
 
-    /** 诗的感悟列表（公开，匿名可读）。 */
+    /** 诗的感悟列表（公开，匿名可读；点赞数/是否已赞随 viewer 变化）。 */
     public List<Comment> poemComments(Long poemId) {
-        return commentMapper.findByPoem(poemId);
+        return commentService.listByPoem(poemId, UserContext.id());
     }
 
-    public Comment addPoemComment(Long poemId, String content) {
-        Long uid = requireLogin();
-        if (content == null || content.trim().isEmpty()) {
-            throw BizException.badRequest("感悟内容不能为空");
-        }
-        if (content.length() > 500) throw BizException.badRequest("感悟最多 500 字");
-        if (poemMapper.findById(poemId) == null) throw BizException.notFound("诗不存在");
+    public Comment addPoemComment(Long poemId, String content, Long parentId) {
+        return commentService.addPoemComment(poemId, content, parentId, UserContext.id());
+    }
 
-        Comment c = new Comment();
-        c.setPoemId(poemId);
-        c.setUserId(uid);
-        c.setContent(content.trim());
-        commentMapper.insertPoem(c);
-        c.setUsername(UserContext.get() == null ? null : UserContext.get().getUsername());
-        return c;
+    /** 点赞/取消点赞（需登录）。 */
+    public Map<String, Object> likeComment(Long commentId) {
+        Long uid = requireLogin();
+        return commentService.toggleLike(commentId, uid);
     }
 
     /** 全站感悟（管理后台）。 */
@@ -188,12 +181,9 @@ public class PoetryService {
         return commentMapper.mine(requireLogin());
     }
 
-    /** 删除自己的感悟。 */
+    /** 删除感悟：主感悟连同回复与点赞；管理员可删任意。 */
     public void deleteComment(Long id) {
-        Long uid = requireLogin();
-        if (commentMapper.deleteByIdAndUser(id, uid) == 0) {
-            throw BizException.forbidden("只能删除自己的感悟");
-        }
+        commentService.deletePoemComment(id, UserContext.id());
     }
 
     private Long requireLogin() {

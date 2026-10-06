@@ -18,18 +18,51 @@
     </insert>
 
     <insert id="insertPoem" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO comment (poem_id, user_id, content, create_time)
-        VALUES (#{poemId}, #{userId}, #{content}, NOW())
+        INSERT INTO comment (poem_id, user_id, parent_id, content, create_time)
+        VALUES (#{poemId}, #{userId}, #{parentId}, #{content}, NOW())
     </insert>
 
     <select id="findByPoem" resultType="Comment">
         SELECT c.id, c.song_id, c.poem_id, c.user_id, c.content, c.create_time,
-               u.name AS username, u.avatar AS avatar
+               u.name AS username, u.avatar AS avatar,
+               c.parent_id AS parentId,
+               (SELECT COUNT(*) FROM comment_like l WHERE l.comment_id = c.id) AS likeCount,
+               (SELECT COUNT(*) FROM comment_like l
+                 WHERE l.comment_id = c.id AND l.user_id = #{viewerId}) > 0 AS likedByMe,
+               (SELECT ru.name FROM comment rc JOIN `user` ru ON ru.id = rc.user_id
+                 WHERE rc.id = c.parent_id) AS replyTo
         FROM comment c
         LEFT JOIN `user` u ON u.id = c.user_id
         WHERE c.poem_id = #{poemId}
-        ORDER BY c.create_time DESC, c.id DESC
+        ORDER BY c.create_time ASC, c.id ASC
     </select>
+
+    <select id="likeCount" resultType="int">
+        SELECT COUNT(*) FROM comment_like WHERE comment_id = #{commentId}
+    </select>
+
+    <select id="likedBy" resultType="int">
+        SELECT COUNT(*) FROM comment_like
+        WHERE comment_id = #{commentId} AND user_id = #{userId}
+    </select>
+
+    <insert id="insertLike">
+        INSERT IGNORE INTO comment_like (comment_id, user_id) VALUES (#{commentId}, #{userId})
+    </insert>
+
+    <delete id="deleteLike">
+        DELETE FROM comment_like WHERE comment_id = #{commentId} AND user_id = #{userId}
+    </delete>
+
+    <select id="findMeta" resultType="map">
+        SELECT c.user_id AS userId, c.parent_id AS parentId, u.name AS userName
+        FROM comment c LEFT JOIN `user` u ON u.id = c.user_id
+        WHERE c.id = #{id}
+    </select>
+
+    <delete id="deleteReplies">
+        DELETE FROM comment WHERE parent_id = #{parentId}
+    </delete>
 
     <select id="mine" resultType="Comment">
         SELECT c.id, c.poem_id, c.content, c.create_time,
@@ -57,4 +90,19 @@
         LEFT JOIN poem m ON m.id = c.poem_id
         ORDER BY c.create_time DESC
     </select>
+
+    <select id="findByIdPoem" resultType="Comment">
+        SELECT id, poem_id AS poemId, user_id AS userId, parent_id AS parentId, content
+        FROM comment WHERE id = #{id}
+    </select>
+
+    <delete id="deleteByIdPoem">
+        DELETE FROM comment WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteLikesCascade">
+        DELETE FROM comment_like
+        WHERE comment_id = #{id}
+           OR comment_id IN (SELECT id FROM comment WHERE parent_id = #{id})
+    </delete>
 </mapper>

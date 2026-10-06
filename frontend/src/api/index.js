@@ -105,7 +105,8 @@ export const poemFavApi = {
 /* 诗的感悟 */
 export const poemCommentApi = {
   list: (poemId) => request.get(`/poem/comment/list/${poemId}`),
-  add: (poemId, content) => request.post('/poem/comment/add', { poemId, content }),
+  add: (poemId, content, parentId) => request.post('/poem/comment/add', { poemId, content, parentId }),
+  like: (id) => request.post(`/poem/comment/like/${id}`),
   mine: () => request.get('/poem/comment/mine'),
   remove: (id) => request.delete(`/poem/comment/delete/${id}`)
 }

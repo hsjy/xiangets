@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { poetryApi, poemFavApi, poemCommentApi, songApi, aiMusicApi } from '../api'
 import { usePlayerStore } from '../stores/player'
@@ -20,8 +20,11 @@ const loading = ref(true)
 const poem = ref(null)
 const tracks = ref([])
 const comments = ref([])
-const favorited = ref(false)
 const commentText = ref('')
+const replyTo = ref(null)      // 正在回复的感悟 {id, username}
+const replyText = ref('')
+const replySubmitting = ref(false)
+const favorited = ref(false)
 const submitting = ref(false)
 const similar = ref([])
 const activeTrackId = ref(null)
@@ -81,7 +84,7 @@ async function load() {
       aiMusicApi.list(data.id)
     ])
     if (t.status === 'fulfilled') tracks.value = t.value.data
-    if (c.status === 'fulfilled') comments.value = c.value.data
+    if (c.status === 'fulfilled') groupComments(c.value.data)
     if (f.status === 'fulfilled') favorited.value = f.value.data.favorited
     if (s.status === 'fulfilled') {
       similar.value = s.value.data.filter((m) => m.id !== data.id).slice(0, 6)
@@ -181,12 +184,62 @@ async function submitComment() {
   }
 }
 
+/** 拉取并按层级组织感悟：主感悟在前（时间序），回复缩进挂在父下 */
+function groupComments(data) {
+  const mains = data.filter((c) => !c.parentId)
+  const replies = data.filter((c) => c.parentId)
+  for (const m of mains) m.replies = replies.filter((r) => r.parentId === m.id)
+  comments.value = mains
+}
+async function refreshComments() {
+  const { data } = await poemCommentApi.list(poem.value.id)
+  groupComments(data)
+}
+
+function startReply(c) {
+  if (!userStore.isLoggedIn) {
+    return router.push({ name: 'login', query: { redirect: route.fullPath } })
+  }
+  replyTo.value = { id: c.id, username: c.username }
+  replyText.value = ''
+  nextTick(() => document.querySelector(`[data-reply-input="${c.id}"]`)?.focus())
+}
+
+async function submitReply() {
+  if (!replyText.value.trim() || replySubmitting.value) return
+  replySubmitting.value = true
+  try {
+    await poemCommentApi.add(poem.value.id, replyText.value.trim(), replyTo.value.id)
+    replyText.value = ''
+    replyTo.value = null
+    await refreshComments()
+    toast.success('回复已发出')
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    replySubmitting.value = false
+  }
+}
+
+async function toggleLike(c) {
+  if (!userStore.isLoggedIn) {
+    return router.push({ name: 'login', query: { redirect: route.fullPath } })
+  }
+  try {
+    const { data } = await poemCommentApi.like(c.id)
+    c.likedByMe = data.liked
+    c.likeCount = data.likeCount
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
 async function removeComment(c) {
   const yes = await confirmAction('确定删除这条感悟吗？', '删除感悟')
   if (!yes) return
   try {
     await poemCommentApi.remove(c.id)
-    comments.value = comments.value.filter((x) => x.id !== c.id)
+    await refreshComments()
     toast.success('已删除')
   } catch (e) {
     toast.error(e.message)
@@ -287,7 +340,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 
       <!-- 感悟 -->
       <section class="comments">
-        <h2 class="sec-title">感悟（{{ comments.length }}）</h2>
+        <h2 class="sec-title">感悟（{{ comments.reduce((n, c) => n + 1 + (c.replies?.length || 0), 0) }}）</h2>
 
         <div class="c-editor" v-if="userStore.isLoggedIn">
           <UserAvatar :name="userStore.user.name" :size="38" circle />
@@ -308,14 +361,52 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
         </div>
 
         <div class="c-list">
-          <div v-for="c in comments" :key="c.id" class="c-item">
-            <UserAvatar :name="c.username" :size="38" circle />
-            <div class="c-body">
-              <div class="c-head">
-                <span class="c-name">{{ c.username }}</span>
-                <button class="c-del" v-if="c.userId === userStore.user?.id" @click="removeComment(c)">删除</button>
+          <div v-for="c in comments" :key="c.id" class="c-thread">
+            <div class="c-item">
+              <UserAvatar :name="c.username" :size="38" circle />
+              <div class="c-body">
+                <div class="c-head">
+                  <span class="c-name">{{ c.username }}</span>
+                  <button class="c-del" v-if="c.userId === userStore.user?.id" @click="removeComment(c)">删除</button>
+                </div>
+                <p class="c-text">{{ c.content }}</p>
+                <div class="c-ops">
+                  <button class="c-like" :class="{ on: c.likedByMe }" @click="toggleLike(c)" data-test="comment-like">
+                    {{ c.likedByMe ? '♥' : '♡' }} {{ c.likeCount || 0 }}
+                  </button>
+                  <button class="c-reply-btn" @click="startReply(c)">回复</button>
+                </div>
+                <!-- 回复输入 -->
+                <div class="reply-editor" v-if="replyTo?.id === c.id">
+                  <input
+                    v-model="replyText" class="input" maxlength="500"
+                    :placeholder="`回复 @${replyTo.username}…`" :data-reply-input="c.id"
+                    @keyup.enter="submitReply" data-test="reply-input"
+                  />
+                  <button class="btn btn-primary btn-sm" :disabled="replySubmitting" @click="submitReply">发送</button>
+                  <button class="btn btn-ghost btn-sm" @click="replyTo = null">取消</button>
+                </div>
               </div>
-              <p class="c-text">{{ c.content }}</p>
+            </div>
+            <!-- 回复（缩进一级） -->
+            <div class="replies" v-if="c.replies?.length">
+              <div v-for="r in c.replies" :key="r.id" class="c-item reply">
+                <UserAvatar :name="r.username" :size="28" circle />
+                <div class="c-body">
+                  <div class="c-head">
+                    <span class="c-name sm">{{ r.username }}</span>
+                    <span class="reply-tag" v-if="r.replyTo && r.replyTo !== c.username">回复 @{{ r.replyTo }}</span>
+                    <button class="c-del" v-if="r.userId === userStore.user?.id" @click="removeComment(r)">删除</button>
+                  </div>
+                  <p class="c-text sm">{{ r.content }}</p>
+                  <div class="c-ops">
+                    <button class="c-like" :class="{ on: r.likedByMe }" @click="toggleLike(r)">
+                      {{ r.likedByMe ? '♥' : '♡' }} {{ r.likeCount || 0 }}
+                    </button>
+                    <button class="c-reply-btn" @click="startReply(r)">回复</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div v-if="!comments.length" class="empty" style="padding: 26px 0">尚无感悟，做第一个题笔的人</div>
@@ -521,4 +612,17 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
   /* 窄屏一列太窄，分列反而更难读 */
   .zhuan { height: auto; column-count: 1; }
 }
+
+.c-ops { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.c-like { border: none; background: none; color: var(--text-3); font-size: 12.5px; cursor: pointer; padding: 0; }
+.c-like.on { color: var(--seal); }
+.c-like:hover { color: var(--seal); }
+.c-reply-btn { border: none; background: none; color: var(--text-3); font-size: 12.5px; cursor: pointer; padding: 0; }
+.c-reply-btn:hover { color: var(--primary); }
+.replies { margin-top: 10px; padding-left: 46px; display: flex; flex-direction: column; gap: 12px; border-left: 2px solid var(--border); margin-left: 19px; }
+.c-item.reply .c-text.sm { font-size: 13px; }
+.c-name.sm { font-size: 13px; }
+.reply-tag { font-size: 11.5px; color: var(--text-3); }
+.reply-editor { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+.reply-editor .input { flex: 1; }
 </style>

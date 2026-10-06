@@ -795,7 +795,33 @@ export async function handle(ctx) {
           if (method === 'GET' && seg[2] === 'list' && seg[3]) {
             const pid = Number(seg[3])
             return ok(db.poemComment.filter((c) => c.poemId === pid)
-              .map((c) => ({ ...c, username: db.user.find((u) => u.id === c.userId)?.name || '已注销', avatar: '' })))
+              .map((c) => ({
+                ...c,
+                username: db.user.find((u) => u.id === c.userId)?.name || '已注销',
+                avatar: '',
+                likeCount: (db.commentLike || []).filter((l) => l.commentId === c.id).length,
+                likedByMe: (db.commentLike || []).some((l) => l.commentId === c.id && l.userId === user.id)
+              })))
+          }
+          if (method === 'POST' && seg[2] === 'like' && seg[3]) {
+            const cid = Number(seg[3])
+            db.commentLike = db.commentLike || []
+            const idx = db.commentLike.findIndex((l) => l.commentId === cid && l.userId === user.id)
+            if (idx >= 0) db.commentLike.splice(idx, 1)
+            else db.commentLike.push({ commentId: cid, userId: user.id, createTime: Date.now() })
+            saveDB(db)
+            return ok({ liked: idx < 0, likeCount: db.commentLike.filter((l) => l.commentId === cid).length })
+          }
+          if (method === 'POST' && seg[2] === 'add') {
+            const poemId = Number(ctx.body?.poemId)
+            const content = String(ctx.body?.content || '').trim()
+            if (!content) return fail(400, '感悟内容不能为空')
+            if (!POEMS.find((m) => m.id === poemId)) return fail(404, '诗不存在')
+            const parentId = ctx.body?.parentId ? Number(ctx.body.parentId) : null
+            const c = { id: db.seq.pc || 1, poemId, userId: user.id, parentId, content, createTime: Date.now() }
+            db.seq.pc = (db.seq.pc || 1) + 1
+            db.poemComment.push(c)
+            return ok({ ...c, username: user.name, avatar: '' })
           }
           if (method === 'POST' && seg[2] === 'add') {
             const poemId = Number(ctx.body?.poemId)

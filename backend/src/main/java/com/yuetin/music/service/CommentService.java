@@ -17,6 +17,7 @@ public class CommentService {
 
     private final CommentMapper commentMapper;
     private final SongMapper songMapper;
+    private final com.yuetin.music.mapper.PoemMapper poemMapper;
 
     public List<Comment> list(Long songId) {
         return commentMapper.findBySong(songId);
@@ -66,6 +67,63 @@ public class CommentService {
     private boolean isAdmin() {
         var cu = UserContext.get();
         return cu != null && cu.isAdmin();
+    }
+
+    /* ---------------- 诗的感悟：互动 ---------------- */
+
+    /** 感悟列表：平铺（主感悟 + 回复），前端按层级渲染；点赞数与是否已赞随 viewer。 */
+    public List<Comment> listByPoem(Long poemId, Long viewerId) {
+        return commentMapper.findByPoem(poemId, viewerId);
+    }
+
+    /** 发感悟或回复：parentId 非空即为回复（统一挂到根感悟，仅一级展开）。 */
+    public Comment addPoemComment(Long poemId, String content, Long parentId, Long uid) {
+        if (content == null || content.trim().isEmpty()) {
+            throw BizException.badRequest("感悟内容不能为空");
+        }
+        if (content.length() > 500) throw BizException.badRequest("感悟最多 500 字");
+        if (poemMapper.findById(poemId) == null) throw BizException.notFound("诗不存在");
+
+        Comment c = new Comment();
+        c.setPoemId(poemId);
+        c.setUserId(uid);
+        c.setContent(content.trim());
+        if (parentId != null) {
+            Map<String, Object> parent = commentMapper.findMeta(parentId);
+            if (parent == null) throw BizException.notFound("回复的感悟不存在");
+            // 只展开一级：回复的回复统一挂到根感悟
+            c.setParentId(parent.get("parentId") != null ? (Long) parent.get("parentId") : parentId);
+            c.setReplyTo((String) parent.get("userName"));
+        }
+        commentMapper.insertPoem(c);
+        c.setUsername(UserContext.get() == null ? null : UserContext.get().getUsername());
+        return c;
+    }
+
+    /** 删除感悟：主感悟连同其回复与点赞；管理员可删任意。 */
+    public void deletePoemComment(Long id, Long uid) {
+        Comment c = commentMapper.findByIdPoem(id);
+        if (c == null) throw BizException.notFound("感悟不存在");
+        var cu = UserContext.get();
+        boolean admin = cu != null && cu.isAdmin();
+        if (!admin && (c.getUserId() == null || !c.getUserId().equals(uid))) {
+            throw BizException.forbidden("只能删除自己的感悟");
+        }
+        commentMapper.deleteLikesCascade(id);
+        commentMapper.deleteReplies(id);
+        commentMapper.deleteByIdPoem(id);
+    }
+
+    /** 点赞/取消点赞（切换），返回最新状态。 */
+    public Map<String, Object> toggleLike(Long commentId, Long uid) {
+        if (commentMapper.findMeta(commentId) == null) throw BizException.notFound("感悟不存在");
+        int liked = commentMapper.likedBy(commentId, uid);
+        if (liked > 0) {
+            commentMapper.deleteLike(commentId, uid);
+        } else {
+            commentMapper.insertLike(commentId, uid);
+        }
+        return Map.of("liked", liked == 0, "likeCount", commentMapper.likeCount(commentId));
     }
 
     private String currentName() {

@@ -114,7 +114,9 @@ public class PoetryController {
     public Result<com.yuetin.music.entity.Comment> addPoemComment(@RequestBody Map<String, Object> body) {
         Long poemId = Long.valueOf(String.valueOf(body.get("poemId")));
         String content = body.get("content") == null ? null : String.valueOf(body.get("content"));
-        return Result.ok(poetryService.addPoemComment(poemId, content));
+        Long parentId = body.get("parentId") == null ? null
+                : Long.valueOf(String.valueOf(body.get("parentId")));
+        return Result.ok(poetryService.addPoemComment(poemId, content, parentId));
     }
 
     /** 书斋：我的感悟。 */
@@ -133,5 +135,11 @@ public class PoetryController {
     public Result<Void> deleteComment(@PathVariable Long id) {
         poetryService.deleteComment(id);
         return Result.ok();
+    }
+
+    /** 点赞/取消点赞感悟（切换）。 */
+    @PostMapping("/poem/comment/like/{id}")
+    public Result<Map<String, Object>> likeComment(@PathVariable Long id) {
+        return Result.ok(poetryService.likeComment(id));
     }
 }
