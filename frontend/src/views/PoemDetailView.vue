@@ -20,6 +20,11 @@ const loading = ref(true)
 const poem = ref(null)
 const tracks = ref([])
 const comments = ref([])
+const hotSort = ref(false)
+const sortedComments = computed(() => {
+  if (!hotSort.value) return comments.value
+  return [...comments.value].sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+})
 const commentText = ref('')
 const replyTo = ref(null)      // 正在回复的感悟 {id, username}
 const replyText = ref('')
@@ -123,6 +128,23 @@ async function removeTrack(t) {
     toast.success('已删除')
   } catch (e) {
     toast.error(e.message)
+  }
+}
+
+const annotating = ref(false)
+async function generateNotes() {
+  if (annotating.value) return
+  annotating.value = true
+  try {
+    const { data } = await poetryApi.annotate(poem.value.id)
+    poem.value.annotation = data.annotation
+    poem.value.translation = data.translation
+    poem.value.appreciation = data.appreciation
+    toast.success('注译赏已生成')
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    annotating.value = false
   }
 }
 
@@ -343,6 +365,15 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 
       <!-- 注 译 赏 -->
       <section class="sanlan">
+        <div class="lan card annotate-btn-card" v-if="!poem.annotation && userStore.isAdmin">
+          <div class="ab-inner">
+            <p class="ab-text">这首诗还没有注释、译文和赏析——</p>
+            <button class="btn btn-primary" :disabled="annotating" @click="generateNotes" data-test="annotate-btn">
+              {{ annotating ? 'DeepSeek 正在品读…' : '✦ 调用 AI 生成注译赏' }}
+            </button>
+          </div>
+        </div>
+        <div class="lan card" v-if="poem.annotation">
         <div class="lan card mingju" v-if="poem.famousNote">
           <h3>名句</h3>
           <p class="mj-line font-brush">「{{ poem.famousLine }}」</p>
@@ -379,7 +410,13 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 
       <!-- 感悟 -->
       <section class="comments">
-        <h2 class="sec-title">感悟（{{ comments.reduce((n, c) => n + 1 + (c.replies?.length || 0), 0) }}）</h2>
+        <div class="c-sort-row">
+          <h2 class="sec-title">感悟</h2>
+          <button class="c-sort-btn" @click="hotSort = !hotSort" data-test="comment-sort">
+            {{ hotSort ? '按时间 ↕' : '按热度 ♥' }}
+          </button>
+        </div>
+        <h2 v-if="false" class="sec-title">感悟（{{ comments.reduce((n, c) => n + 1 + (c.replies?.length || 0), 0) }}）</h2>
 
         <div class="c-editor" v-if="userStore.isLoggedIn">
           <UserAvatar :name="userStore.user.name" :size="38" circle />
@@ -400,7 +437,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
         </div>
 
         <div class="c-list">
-          <div v-for="c in comments" :key="c.id" class="c-thread">
+          <div v-for="c in sortedComments" :key="c.id" class="c-thread">
             <div class="c-item">
               <UserAvatar :name="c.username" :size="38" circle />
               <div class="c-body">
@@ -448,7 +485,7 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
               </div>
             </div>
           </div>
-          <div v-if="!comments.length" class="empty" style="padding: 26px 0">尚无感悟，做第一个题笔的人</div>
+          <div v-if="!sortedComments.length" class="empty" style="padding: 26px 0">尚无感悟，做第一个题笔的人</div>
         </div>
       </section>
     </template>
@@ -682,4 +719,12 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
 .reply-tag { font-size: 11.5px; color: var(--text-3); }
 .reply-editor { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
 .reply-editor .input { flex: 1; }
+
+.annotate-btn-card { border-color: var(--accent); background: linear-gradient(160deg, rgba(184, 134, 11, 0.06), var(--card)); }
+.ab-inner { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.ab-text { margin: 0; font-size: 13.5px; color: var(--text-2); }
+
+.c-sort-row { display: flex; align-items: center; justify-content: space-between; }
+.c-sort-btn { border: none; background: none; color: var(--text-3); font-size: 12.5px; cursor: pointer; }
+.c-sort-btn:hover { color: var(--primary); }
 </style>

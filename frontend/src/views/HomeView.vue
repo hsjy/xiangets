@@ -121,6 +121,25 @@ function playToday() {
   if (todayTrack.value && today.value?.poem) playTrack(todayTrack.value, today.value.poem)
 }
 const firstLine = (p) => (p.paragraphs || '').split('\n')[0] || ''
+
+/* 节气计算（近似日期，公历） */
+const SOLAR_TERMS = [
+  [1, 6, '小寒'], [1, 20, '大寒'], [2, 4, '立春'], [2, 19, '雨水'],
+  [3, 5, '惊蛰'], [3, 20, '春分'], [4, 5, '清明'], [4, 20, '谷雨'],
+  [5, 5, '立夏'], [5, 21, '小满'], [6, 6, '芒种'], [6, 21, '夏至'],
+  [7, 7, '小暑'], [7, 22, '大暑'], [8, 7, '立秋'], [8, 23, '处暑'],
+  [9, 7, '白露'], [9, 23, '秋分'], [10, 8, '寒露'], [10, 23, '霜降'],
+  [11, 7, '立冬'], [11, 22, '小雪'], [12, 7, '大雪'], [12, 21, '冬至']
+]
+const currentTerm = computed(() => {
+  const now = new Date()
+  const m = now.getMonth() + 1, d = now.getDate()
+  let cur = SOLAR_TERMS[0]
+  for (const t of SOLAR_TERMS) {
+    if (m > t[0] || (m === t[0] && d >= t[1])) cur = t
+  }
+  return cur[2]
+})
 const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
 </script>
 
@@ -201,7 +220,7 @@ const fullTitle = (p) => p.title + (p.subtitle ? '·' + p.subtitle : '')
     <section v-reveal class="sec" v-if="today?.poem">
       <div class="today-card">
         <div class="tc-left">
-          <p class="tc-date">{{ today.date }} · 今日一诗 · 与「此刻」不同，今日只此一首</p>
+          <p class="tc-date">{{ today.date }} · {{ currentTerm }} · 今日一诗 · 与「此刻」不同，今日只此一首</p>
           <h2 class="tc-famous font-brush">「{{ today.poem.famousLine || today.poem.title }}」</h2>
           <p class="tc-meta">
             <router-link :to="`/poem/${today.poem.id}`">《{{ fullTitle(today.poem) }}》</router-link>

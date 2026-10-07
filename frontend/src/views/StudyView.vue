@@ -35,14 +35,39 @@ async function removeComment(c) {
 }
 
 onMounted(load)
+
+function exportMd() {
+  const lines = ['# 弦歌 · 书斋导出', '', `> 导出时间：${new Date().toLocaleString('zh-CN')}`, '']
+  if (favs.value.length) {
+    lines.push('## 收藏的诗\n')
+    favs.value.forEach((f, i) => {
+      lines.push(`${i + 1}. 《${f.title}${f.subtitle ? '·' + f.subtitle : ''}》 — ${f.poetName || ''}`)
+    })
+    lines.push('')
+  }
+  if (myComments.value?.length) {
+    lines.push('## 我的感悟\n')
+    myComments.value.forEach((c) => {
+      lines.push(`> **《${c.poemTitle || ''}》**\n> ${c.content}\n`)
+    })
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = '弦歌·书斋.md'
+  a.click()
+}
 </script>
 
 <template>
   <div class="page">
     <div class="page-head">
       <div>
-        <h1 class="page-title">书斋</h1>
-        <p class="page-sub">你收藏的诗，与你写下的感悟</p>
+        <div>
+          <h1 class="page-title">书斋</h1>
+          <p class="page-sub">你收藏的诗，与你写下的感悟</p>
+        </div>
+        <button class="btn btn-ghost" @click="exportMd" data-test="export-md">导出 Markdown</button>
       </div>
     </div>
 
@@ -83,7 +108,11 @@ onMounted(load)
           </div>
         </div>
       </section>
-    </template>
+    
+<style>
+.export-btn { margin-top: 8px; }
+</style>
+</template>
   </div>
 </template>
 

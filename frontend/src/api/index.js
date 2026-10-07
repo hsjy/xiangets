@@ -108,6 +108,7 @@ export const poemCommentApi = {
   list: (poemId) => request.get(`/poem/comment/list/${poemId}`),
   add: (poemId, content, parentId) => request.post('/poem/comment/add', { poemId, content, parentId }),
   like: (id) => request.post(`/poem/comment/like/${id}`),
+  annotate: (id) => request.post(`/poem/annotate/${id}`),
   mine: () => request.get('/poem/comment/mine'),
   remove: (id) => request.delete(`/poem/comment/delete/${id}`)
 }
@@ -168,4 +169,9 @@ export const followApi = {
   following: () => request.get('/follow/following'),
   followers: () => request.get('/follow/followers'),
   info: (userId) => request.get(`/follow/info/${userId}`)
+}
+
+/* 诗人对话 AI */
+export const poetChatApi = {
+  ask: (poetId, question, history) => request.post(`/poet/chat/${poetId}`, { question, history })
 }
