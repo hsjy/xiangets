@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 280px; padding: 16px;
+      background: #f1ead9; font-family: 'Songti SC', serif; color: #2f2a20; }
+    .seal-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .seal { width: 28px; height: 28px; border-radius: 5px;
+      background: #a5402d; color: #fbf6ea;
+      display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .name { font-size: 16px; font-weight: 600; letter-spacing: 2px; }
+    .sub { font-size: 11px; color: #9a9077; margin-bottom: 14px; }
+    input { width: 100%; padding: 8px 12px; border: 1px solid rgba(74,60,36,0.3);
+      border-radius: 6px; background: #fbf7ec; font-size: 13px; outline: none; }
+    input:focus { border-color: #40634d; }
+    .btn { display: block; width: 100%; margin-top: 10px; padding: 8px;
+      border: none; border-radius: 6px; background: #40634d; color: #fbf6ea;
+      font-size: 13px; cursor: pointer; }
+    .btn:hover { filter: brightness(1.1); }
+    .result { margin-top: 12px; font-size: 13px; }
+    .result a { color: #40634d; text-decoration: none; display: block; padding: 6px 0;
+      border-bottom: 1px solid rgba(74,60,36,0.1); }
+    .result a:hover { color: #a5402d; }
+  </style>
+</head>
+<body>
+  <div class="seal-row">
+    <div class="seal">弦</div>
+    <div><div class="name">弦歌</div><div class="sub">诗乐雅集</div></div>
+  </div>
+  <input id="kw" placeholder="搜诗题 / 诗句 / 诗人…" />
+  <button class="btn" id="go">搜索</button>
+  <div class="result" id="result"></div>
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

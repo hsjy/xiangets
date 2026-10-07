@@ -1,0 +1,46 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #f1ead9, #e5dcc4);
+  font-family: 'LXGW WenKai', 'Songti SC', 'SimSun', serif;
+  color: #2f2a20;
+  position: relative; overflow: hidden;
+}
+.bg-ink {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(800px 400px at 80% -10%, rgba(74,124,89,0.1), transparent),
+    radial-gradient(600px 300px at 10% 110%, rgba(58,54,48,0.12), transparent);
+}
+.container { position: relative; z-index: 1; text-align: center; padding: 40px; }
+.seal {
+  width: 52px; height: 52px; border-radius: 8px;
+  background: #a5402d; color: #fbf6ea;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 28px; margin-bottom: 8px;
+}
+h1 { font-size: 28px; letter-spacing: 4px; margin: 0 0 4px; }
+.sub { font-size: 13px; color: #9a9077; margin-bottom: 32px; letter-spacing: 2px; }
+.poem-card {
+  background: rgba(251,247,236,0.9);
+  border: 1px solid rgba(74,60,36,0.3);
+  border-radius: 14px;
+  padding: 32px 40px;
+  max-width: 480px; margin: 0 auto 24px;
+  box-shadow: 0 8px 24px rgba(88,70,40,0.12);
+}
+.date { font-size: 12px; color: #9a9077; letter-spacing: 1px; margin-bottom: 12px; }
+.famous { font-size: 24px; color: #a5402d; margin: 0 0 12px; line-height: 1.6; }
+.meta { font-size: 13px; color: #6b6250; margin-bottom: 10px; }
+.first-line { font-size: 14.5px; color: #6b6250; line-height: 2; }
+.actions { margin-top: 18px; }
+.btn {
+  display: inline-block; padding: 8px 20px;
+  border: 1px solid #a5402d; border-radius: 6px;
+  color: #a5402d; text-decoration: none; font-size: 13px;
+  transition: all 0.2s;
+}
+.btn:hover { background: #a5402d; color: #fbf6ea; }
+footer { margin-top: 32px; font-size: 12px; color: #9a9077; letter-spacing: 1px; }
+.font-brush { font-family: 'Ma Shan Zheng', 'Songti SC', serif; }

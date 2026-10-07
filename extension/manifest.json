@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "弦歌 · 诗乐雅集",
+  "version": "1.0.0",
+  "description": "古诗配乐欣赏——新标签页每日一诗，右键搜索诗句",
+  "permissions": ["contextMenus", "storage"],
+  "host_permissions": [],
+  "background": { "service_worker": "background.js" },
+  "chrome_url_overrides": { "newtab": "newtab.html" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" }
+  },
+  "icons": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" }
+}
