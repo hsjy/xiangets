@@ -109,9 +109,6 @@ function exportMd() {
         </div>
       </section>
     
-<style>
-.export-btn { margin-top: 8px; }
-</style>
 </template>
   </div>
 </template>
@@ -155,4 +152,5 @@ function exportMd() {
 .m-meta a { color: var(--primary-2); }
 .m-del { border: none; background: none; color: var(--text-3); font-size: 12px; cursor: pointer; }
 .m-del:hover { color: var(--danger); }
+.export-btn { margin-top: 8px; }
 </style>

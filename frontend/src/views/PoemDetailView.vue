@@ -373,7 +373,6 @@ watch(() => route.params.id, () => { if (route.name === 'poemDetail') load() })
             </button>
           </div>
         </div>
-        <div class="lan card" v-if="poem.annotation">
         <div class="lan card mingju" v-if="poem.famousNote">
           <h3>名句</h3>
           <p class="mj-line font-brush">「{{ poem.famousLine }}」</p>
