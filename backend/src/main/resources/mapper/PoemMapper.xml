@@ -149,4 +149,10 @@
               LIKE CONCAT('%', #{line}, '%')
         LIMIT 1
     </select>
+
+    <update id="updateNotes">
+        UPDATE poem SET annotation = #{annotation}, translation = #{translation},
+               appreciation = #{appreciation}, tier = 1
+        WHERE id = #{id}
+    </update>
 </mapper>

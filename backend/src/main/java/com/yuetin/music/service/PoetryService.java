@@ -25,6 +25,7 @@ public class PoetryService {
     private final PoetMapper poetMapper;
     private final CommentMapper commentMapper;
     private final com.yuetin.music.service.CommentService commentService;
+    private final com.yuetin.music.service.DeepSeekPoet deepSeekPoet;
     private final PoemFavoriteMapper poemFavoriteMapper;
 
     /** 诗选：朝代/情绪/关键词自由组合。 */
@@ -174,6 +175,29 @@ public class PoetryService {
     /** 全站感悟（管理后台）。 */
     public List<Map<String, Object>> allCommentsForAdmin() {
         return commentService.allForAdmin();
+    }
+
+    /** 语料层按需注译赏：DeepSeek 生成并缓存入库。 */
+    public Map<String, Object> generateNotes(Long poemId) {
+        Poem poem = poemMapper.findById(poemId);
+        if (poem == null) throw BizException.notFound("诗不存在");
+        if (!deepSeekPoet.configured()) throw BizException.badRequest("未配置 DeepSeek API Key");
+        Map<String, String> notes = deepSeekPoet.generateNotes(poem);
+        poem.setAnnotation(notes.get("annotation"));
+        poem.setTranslation(notes.get("translation"));
+        poem.setAppreciation(notes.get("appreciation"));
+        poemMapper.updateNotes(poemId, notes.get("annotation"), notes.get("translation"), notes.get("appreciation"));
+        return Map.of("annotation", notes.get("annotation"),
+                      "translation", notes.get("translation"),
+                      "appreciation", notes.get("appreciation"));
+    }
+
+    /** 诗人对话 AI：以第一人称扮演诗人。 */
+    public Map<String, Object> poetChat(Long poetId, String question, List<Map<String, String>> history) {
+        var poet = poetMapper.findById(poetId);
+        if (poet == null) throw BizException.notFound("诗人不存在");
+        if (!deepSeekPoet.configured()) throw BizException.badRequest("未配置 DeepSeek API Key");
+        return deepSeekPoet.poetChat(poet, question, history);
     }
 
     /** 我的感悟（书斋）。 */

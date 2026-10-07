@@ -119,6 +119,22 @@ public class PoetryController {
         return Result.ok(poetryService.addPoemComment(poemId, content, parentId));
     }
 
+    /** 语料层按需注译赏（DeepSeek 生成并缓存）。 */
+    @PostMapping("/poem/annotate/{id}")
+    public Result<Map<String, Object>> annotate(@PathVariable Long id) {
+        return Result.ok(poetryService.generateNotes(id));
+    }
+
+    /** 诗人对话 AI（角色扮演）。 */
+    @PostMapping("/poet/chat/{id}")
+    public Result<Map<String, Object>> poetChat(@PathVariable Long id,
+                                                 @RequestBody Map<String, Object> body) {
+        String question = String.valueOf(body.getOrDefault("question", ""));
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> history = (List<Map<String, String>>) body.get("history");
+        return Result.ok(poetryService.poetChat(id, question, history));
+    }
+
     /** 书斋：我的感悟。 */
     /** 全站感悟（管理后台）。 */
     @GetMapping("/poem/comment/all")

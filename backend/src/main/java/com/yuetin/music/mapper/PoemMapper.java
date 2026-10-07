@@ -55,4 +55,8 @@ public interface PoemMapper {
 
     /** 飞花令：校验对句是否存在（去标点包含匹配） */
     long countLineExists(@Param("line") String line);
+
+    /** 语料层按需注译赏：写入三字段并升级为精选层 */
+    int updateNotes(@Param("id") Long id, @Param("annotation") String annotation,
+                    @Param("translation") String translation, @Param("appreciation") String appreciation);
 }
