@@ -2,8 +2,8 @@
 /**
  * 人生行旅图：古风舆图风格的 SVG 单组件。
  * 底图为生成资产（china-outline.js，等经纬投影 1000x720），
- * 诗人落脚点按时间序连成朱砂虚线；地名旁小字标注该地所作诗题，
- * 点诗题直接进入意境页，点落脚点在看下方行止卡片。
+ * 诗人落脚点按时间序连成虚线，并按停留时段由青转朱（少壮→迟暮）；
+ * 地名旁小字标注该地所作诗题，点诗题直接进入意境页，点落脚点在看下方行止卡片。
  * 支持滚轮/双指缩放、拖拽平移；放大后淡入诗人朝代的行政区划
  * （唐·道 / 宋·路 / 东晋·州，示意界线，按需懒加载）。
  */
@@ -193,7 +193,7 @@ const stops = computed(() => {
       shown: poems.slice(0, 2)
     }
   })
-  return placeLabels(list)
+  return paintTimeline(placeLabels(list))
 })
 
 /**
@@ -258,13 +258,71 @@ function placeLabels(list) {
   return list
 }
 
-/** 行旅路线：按时间序把落脚点连成平滑曲线 */
-const routePath = computed(() => {
+/** 行旅路线：按时间序分段连线，每段按停留时段着色（青→朱渐变） */
+const legs = computed(() => {
   const pts = stops.value
-  if (pts.length < 2) return ''
-  let d = `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
-  for (let i = 1; i < pts.length; i++) d += `L${pts[i].x.toFixed(1)} ${pts[i].y.toFixed(1)}`
-  return d
+  const arr = []
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i]
+    arr.push({
+      d: `M${a.x.toFixed(1)} ${a.y.toFixed(1)}L${b.x.toFixed(1)} ${b.y.toFixed(1)}`,
+      color: rampColor((a.t + b.t) / 2)
+    })
+  }
+  return arr
+})
+
+/* ---------- 岁月着色：period 年份 → 一生位置 → 颜色 ---------- */
+
+/** 取 period 起始年份；「前353」计为负（公元前），「约724」照常解析 */
+function yearOf(period) {
+  const m = String(period || '').match(/(前)?(\d{1,4})/)
+  if (!m) return null
+  const n = parseInt(m[2], 10)
+  return m[1] ? -n : n
+}
+
+/** 少壮青葱 → 迟暮朱砂：HSL 直插，中段自然掠过泥金般的赭色 */
+function rampColor(t) {
+  const h = 103 + (11 - 103) * t
+  const s = 18 + (58 - 18) * t
+  const l = 52 + (41 - 52) * t
+  return `hsl(${h.toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}%)`
+}
+
+const fmtYear = (y) => (y < 0 ? `前${-y}` : `${y}`)
+
+/** 给每站记 t（0~1 一生位置）与 color；缺年份的站借邻近年份插值 */
+function paintTimeline(list) {
+  const n = list.length
+  if (n === 0) return list
+  const years = list.map((s) => yearOf(s.period))
+  const valid = years.filter((y) => y != null)
+  const ts = new Array(n)
+  if (valid.length >= 2) {
+    const lo = Math.min(...valid), hi = Math.max(...valid)
+    for (let i = 0; i < n; i++) ts[i] = years[i] == null ? null : (years[i] - lo) / ((hi - lo) || 1)
+    for (let i = 0; i < n; i++) {
+      if (ts[i] != null) continue
+      let a = i - 1
+      while (a >= 0 && ts[a] == null) a--
+      let b = i + 1
+      while (b < n && ts[b] == null) b++
+      ts[i] = a < 0 ? (b < n ? ts[b] : 0.5)
+        : b >= n ? ts[a]
+        : ts[a] + (ts[b] - ts[a]) * ((i - a) / (b - a))
+    }
+  } else {
+    for (let i = 0; i < n; i++) ts[i] = n > 1 ? i / (n - 1) : 0.5
+  }
+  list.forEach((s, i) => { s.t = ts[i]; s.color = rampColor(ts[i]) })
+  return list
+}
+
+const legend = computed(() => {
+  const ys = stops.value.map((s) => yearOf(s.period)).filter((y) => y != null)
+  if (ys.length < 2) return null
+  return { from: fmtYear(Math.min(...ys)), to: fmtYear(Math.max(...ys)) }
 })
 
 const current = computed(() => stops.value[selected.value] || null)
@@ -326,19 +384,19 @@ const cnNo = (n) => cnNum(n) + '\u2002'
               class="inset-label">南海诸岛</text>
       </g>
 
-      <!-- 行旅路线 -->
-      <path :d="routePath" class="route" />
+      <!-- 行旅路线：每段按停留时段由青转朱 -->
+      <path v-for="(l, k) in legs" :key="'leg' + k" :d="l.d" class="route" :style="{ stroke: l.color }" />
 
       <!-- 落脚点（随缩放反向缩放，保持圆点与文字观感恒定） -->
       <g v-for="(s, i) in stops" :key="i" class="stop" :class="{ on: selected === i }"
          :transform="`translate(${s.x} ${s.y}) scale(${invK})`"
          @click="toggleSelect(i)">
-        <circle r="10" class="halo" />
-        <circle r="4.5" class="dot" />
+        <circle r="10" class="halo" :fill="s.color" />
+        <circle r="4.5" class="dot" :fill="s.color" />
         <!-- 地名 + 旁注诗题（每地至多两首，可点进诗；其余见行止卡片） -->
         <g class="labels">
           <text :x="s.lxr" :y="s.lyr" class="place">
-            <tspan class="no">{{ cnNo(i + 1) }}</tspan>{{ s.place }}
+            <tspan class="no" :fill="s.color">{{ cnNo(i + 1) }}</tspan>{{ s.place }}
           </text>
           <text v-for="(p, k) in s.shown" :key="k" class="poem"
                 :x="s.lxr + 10" :y="s.lyr + 14 + k * 14"
@@ -363,6 +421,14 @@ const cnNo = (n) => cnNum(n) + '\u2002'
         {{ dynLayer.title }}
       </button>
     </div>
+    <!-- 岁月图例：青（少壮）→ 朱（迟暮） -->
+    <div class="legend" v-if="legend" data-test="journey-legend"
+         title="行旅岁月：由少壮青葱至迟暮朱砂">
+      <span class="lg-cap">行旅岁月</span>
+      <span class="lg-y">{{ legend.from }}</span>
+      <span class="lg-bar"></span>
+      <span class="lg-y">{{ legend.to }}</span>
+    </div>
     <span class="tip" v-if="!dynOn && dynLayer">滚轮缩放 · 拖拽平移 · 放大后现{{ dynLayer.dynasty === 'tang' ? '唐道' : dynLayer.dynasty === 'song' ? '宋路' : '东晋州' }}</span>
     </div>
 
@@ -374,7 +440,7 @@ const cnNo = (n) => cnNum(n) + '\u2002'
           {{ current.place }}
           <small class="modern">{{ current.modern }}</small>
         </h3>
-        <p class="period">{{ current.period }}</p>
+        <p class="period"><span class="pd" :style="{ background: current.color }"></span>{{ current.period }}</p>
         <p class="event">{{ current.event }}</p>
         <p class="dp" v-if="current.poems.length">
           <template v-for="(p, k) in current.poems" :key="p.id">
@@ -411,7 +477,7 @@ const cnNo = (n) => cnNum(n) + '\u2002'
 
 .route {
   fill: none;
-  stroke: var(--seal);
+  /* 描色由各段的 :style（岁月着色）提供 */
   stroke-width: 2.2;
   stroke-dasharray: 7 6;
   stroke-linejoin: round;
@@ -423,13 +489,13 @@ const cnNo = (n) => cnNum(n) + '\u2002'
 @keyframes march { to { stroke-dashoffset: -650; } }
 
 .stop { cursor: pointer; }
-.halo { fill: var(--seal); opacity: 0.14; }
-.dot { fill: var(--seal); stroke: var(--card); stroke-width: 1.5; }
+.halo { opacity: 0.14; }
+.dot { stroke: var(--card); stroke-width: 1.5; }
 .stop:hover .dot, .stop.on .dot { r: 6; }
 .stop:hover .halo, .stop.on .halo { opacity: 0.24; }
 
 .place { font-size: 15px; fill: var(--text); font-weight: 600; letter-spacing: 1px; paint-order: stroke; stroke: rgba(241, 234, 217, 0.85); stroke-width: 3px; }
-.no { fill: var(--seal); font-weight: 700; margin-right: 2px; }
+.no { font-weight: 700; margin-right: 2px; }
 .poem {
   font-size: 11.5px;
   fill: var(--accent);
@@ -463,12 +529,22 @@ const cnNo = (n) => cnNum(n) + '\u2002'
   background: rgba(250, 246, 234, 0.8); padding: 2px 8px; border-radius: 999px;
 }
 
+.legend {
+  position: absolute; left: 12px; top: 10px;
+  display: flex; align-items: center; gap: 7px;
+  background: rgba(250, 246, 234, 0.85); padding: 3px 10px; border-radius: 999px;
+}
+.lg-cap { font-size: 11px; color: var(--text-3); letter-spacing: 2px; }
+.lg-y { font-size: 10.5px; color: var(--text-2); }
+.lg-bar { width: 72px; height: 5px; border-radius: 3px; background: linear-gradient(90deg, #7d9b6f, #a5402d); }
+
 .detail { padding: 16px 18px; min-height: 180px; }
 .detail.empty { display: flex; align-items: center; }
 .hint { margin: 0; font-size: 13px; line-height: 2; color: var(--text-3); }
 .detail h3 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 6px; font-size: 17px; }
 .modern { font-size: 11.5px; color: var(--text-3); font-weight: 400; }
-.period { margin: 0 0 8px; font-size: 12px; color: var(--accent); }
+.period { margin: 0 0 8px; font-size: 12px; color: var(--accent); display: flex; align-items: center; }
+.pd { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; flex: none; }
 .event { margin: 0 0 8px; font-size: 13.5px; line-height: 2; color: var(--text-2); }
 .dp { margin: 0; font-size: 13px; }
 .dp a { color: var(--accent); cursor: pointer; }

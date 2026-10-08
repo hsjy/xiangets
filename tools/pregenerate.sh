@@ -62,7 +62,8 @@ print('yes' if any(t.get('trackKind')=='ai' for t in d) else 'no')" 2>/dev/null 
     ((SKIP++)); continue
   fi
 
-  say "谱曲：#$id《$title》"
+  # macOS 自带 bash 3.2 会把 $id《 的全角字符吞进变量名，紧邻全角字符必须加花括号
+  say "谱曲：#${id}《${title}》"
   job=$(curl -sf -m 30 -X POST "$API/ai/music/generate" -H 'Content-Type: application/json' -d "{\"poemId\":$id}" | python3 -c "
 import json,sys
 print(json.load(sys.stdin)['data']['id'])" 2>/dev/null) || { warn "建单失败 #$id"; ((FAIL++)); FAILED_IDS+=("$id"); continue; }
@@ -74,8 +75,8 @@ print(json.load(sys.stdin)['data']['id'])" 2>/dev/null) || { warn "建单失败 
 import json,sys
 d=json.load(sys.stdin)['data']
 print(d['status'])" 2>/dev/null || echo unknown)
-    [[ "$st" == "done" ]] && { ok "#$id《$title》完成"; ((DONE++)); break; }
-    [[ "$st" == "failed" ]] && { warn "#$id《$title》失败"; ((FAIL++)); FAILED_IDS+=("$id"); break; }
+    [[ "$st" == "done" ]] && { ok "#${id}《${title}》完成"; ((DONE++)); break; }
+    [[ "$st" == "failed" ]] && { warn "#${id}《${title}》失败"; ((FAIL++)); FAILED_IDS+=("$id"); break; }
   done
   sleep "$GAP"
 done
