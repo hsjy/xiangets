@@ -1,16 +1,21 @@
 /**
  * axios 客户端：
- * - 默认模式（静态部署 / GitHub Pages）：使用自定义 adapter 把请求交给浏览器内 Mock 服务处理；
+ * - 默认模式（静态部署 / GitHub Pages / 桌面与移动端 App 壳）：自定义 adapter 把请求交给浏览器内 Mock 服务；
  * - real 模式（vite --mode real）：直连真实 SpringBoot 后端（开发态走 vite 代理 /api -> localhost:8080）。
+ * - 运行时覆盖：localStorage 设 `yuetin_server`（如 https://api.example.com，不带 /api）后，
+ *   无论构建模式为何都直连该服务器——App 壳与静态部署由此接入自建后端。清除该 key 恢复 mock。
  * 两种模式共用同一套 RESTful 约定与统一响应结构 { code, message, data }。
  */
 import axios from 'axios'
 import { handle as mockHandle } from '../mock/server'
 
-const useMock = import.meta.env.MODE !== 'real'
+let savedServer = ''
+try { savedServer = (localStorage.getItem('yuetin_server') || '').trim() } catch { /* 隐私模式忽略 */ }
+
+const useMock = !savedServer && import.meta.env.MODE !== 'real'
 
 const request = axios.create({
-  baseURL: '/api',
+  baseURL: savedServer ? savedServer.replace(/\/+$/, '') + '/api' : '/api',
   timeout: 20000
 })
 
