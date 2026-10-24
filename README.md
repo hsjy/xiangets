@@ -20,10 +20,9 @@
 
 | 文件 | 平台 | 说明 |
 | --- | --- | --- |
-| `xiangets_*_aarch64.dmg` | macOS（Apple Silicon） | 未签名，首启需右键打开绕过 Gatekeeper |
-| `xiangets_*_x64.dmg` | macOS（Intel） | 同上 |
+| `xiangets_*_universal.dmg` | macOS（Intel + Apple Silicon 通用） | 未签名，首启需右键打开绕过 Gatekeeper |
 | `xiangets_*_x64-setup.exe` / `.msi` | Windows 10/11 | NSIS 安装器或 MSI |
-| `xiangets_*_amd64.AppImage` / `.deb` | Linux | 免安装直跑 / Debian 系 |
+| `xiangets_*_amd64.AppImage` / `.deb` / `.rpm` | Linux | 免安装直跑 / Debian 系 / RedHat 系 |
 | `xiangets-android_v*.apk` | Android 6+ | 允许未知来源安装 |
 
 桌面端为 **Tauri** 壳、移动端为 **Capacitor** 壳，打包的都是 Mock 模式前端——开箱即用（诗词/选集/游戏/感悟全可玩，数据存本地），但**不含音频与 AI 功能**。想连自建后端：在 App 内执行 `localStorage.setItem('yuetin_server', 'https://你的服务器')` 后重启（见 `src/api/client.js`）。

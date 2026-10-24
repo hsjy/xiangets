@@ -45,23 +45,30 @@ jobs:
           prerelease: false
           generate_release_notes: true
 
-  # ---- 桌面端（Tauri）：macOS dmg 双架构 / Windows msi+exe / Linux AppImage+deb ----
+  # ---- 桌面端（Tauri）：macOS universal dmg / Windows msi+exe / Linux AppImage+deb+rpm ----
   desktop:
     needs: extension
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest    # Apple Silicon
-          - platform: macos-13        # Intel
+          # macos-13（Intel 原生）runner 长期排不上队，改在 Apple Silicon 上
+          # 交叉编译 universal dmg，一个包同时覆盖 Intel 与 Apple Silicon
+          - platform: macos-latest
+            args: '--target universal-apple-darwin'
           - platform: ubuntu-22.04
+            args: ''
           - platform: windows-latest
+            args: ''
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
       - uses: dtolnay/rust-toolchain@stable
+      - name: 增加 x86_64 目标（universal dmg 需要）
+        if: runner.os == 'macOS'
+        run: rustup target add x86_64-apple-darwin
       - name: 安装 Linux WebView 依赖（Tauri 需要）
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -79,6 +86,7 @@ jobs:
           releaseBody: '桌面端与 Android 均为 Mock 演示模式（内置语料、本地数据）；连自建后端见 README。'
           releaseDraft: false
           prerelease: false
+          args: ${{ matrix.args }}
 
   # ---- Android APK（Capacitor）----
   android:
