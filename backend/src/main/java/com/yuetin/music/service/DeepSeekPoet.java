@@ -114,20 +114,34 @@ public class DeepSeekPoet {
     public record Result(String prompt, String moodEn, String rationale) {
     }
 
-    /** 诗人对话 AI：以第一人称扮演诗人回答问题。 */
+    /** 诗人对话 AI：以第一人称扮演诗人回答问题，库中生平资料注入 system prompt 作为事实依据。 */
     public Map<String, Object> poetChat(com.yuetin.music.entity.Poet poet, String question,
                                          List<Map<String, String>> history) {
-        String system = String.format(
-            "你是%s（%s，%s）。你不是 AI，你就是本人。以第一人称回答读者的问题。\n" +
-            "你的性格、经历、作品、时代背景你都了如指掌。回答要：\n" +
-            "1. 有个性，符合你的身份和时代；\n" +
-            "2. 可以引用你自己的诗句；\n" +
-            "3. 不超过 200 字；\n" +
-            "4. 不用 markdown；\n" +
-            "5. 如果对方问了你不了解的未来之事，巧妙回避。",
-            poet.getName(), poet.getTitle() != null ? poet.getTitle() : "", poet.getDynasty());
+        String identity = poet.getName()
+                + (blank(poet.getZi()) ? "" : "，字" + poet.getZi())
+                + (blank(poet.getHao()) ? "" : "，号" + poet.getHao());
+        java.util.List<String> inner = new java.util.ArrayList<>();
+        if (!blank(poet.getTitle())) inner.add(poet.getTitle());
+        if (!blank(poet.getDynasty())) inner.add(poet.getDynasty());
+        if (!blank(poet.getYears())) inner.add(poet.getYears());
+        if (!inner.isEmpty()) identity += "（" + String.join("，", inner) + "）";
+
+        StringBuilder system = new StringBuilder(
+            "你是" + identity + "。你不是 AI，你就是本人。以第一人称回答读者的问题。\n");
+        String profile = buildProfile(poet);
+        if (!profile.isBlank()) {
+            system.append("以下是关于你的生平资料（本项目编撰），回答须与之相符；")
+                  .append("资料未提及之处可以用你所知的历史知识补充，但不得与之矛盾：\n")
+                  .append(profile);
+        }
+        system.append("回答要：\n")
+              .append("1. 有个性，符合你的身份和时代；\n")
+              .append("2. 可以引用你自己的诗句；\n")
+              .append("3. 不超过 200 字；\n")
+              .append("4. 不用 markdown；\n")
+              .append("5. 如果对方问了你不了解的未来之事，巧妙回避。");
         List<Map<String, String>> messages = new java.util.ArrayList<>();
-        messages.add(java.util.Map.of("role", "system", "content", system));
+        messages.add(java.util.Map.of("role", "system", "content", system.toString()));
         if (history != null) {
             int i = 0;
             for (Map<String, String> turn : history) {
@@ -164,6 +178,47 @@ public class DeepSeekPoet {
         } catch (Exception e) {
             throw new IllegalStateException("诗人对话暂时不可用", e);
         }
+    }
+
+    /** 生平资料块：简介 + 故事 + 行旅足迹，全部为空则返回空串（语料层诗人无资料时不注入）。 */
+    private String buildProfile(com.yuetin.music.entity.Poet poet) {
+        StringBuilder sb = new StringBuilder();
+        if (!blank(poet.getIntro())) sb.append("简介：").append(poet.getIntro().trim()).append('\n');
+        if (!blank(poet.getStory())) sb.append("生平故事：").append(poet.getStory().trim()).append('\n');
+        String stops = journeyStops(poet.getJourney());
+        if (!stops.isBlank()) sb.append("行旅足迹（按时间序）：\n").append(stops);
+        return sb.toString();
+    }
+
+    /** 行旅 JSON 转可读文本，坏数据静默返回空，不挡对话。 */
+    private String journeyStops(String journey) {
+        if (blank(journey)) return "";
+        try {
+            JsonNode arr = mapper.readTree(journey);
+            if (!arr.isArray() || arr.isEmpty()) return "";
+            StringBuilder sb = new StringBuilder();
+            for (JsonNode stop : arr) {
+                String place = stop.path("place").asText("");
+                if (place.isBlank()) continue;
+                String period = stop.path("period").asText("");
+                String modern = stop.path("modern").asText("");
+                String event = stop.path("event").asText("");
+                sb.append("· ");
+                if (!period.isBlank()) sb.append(period).append(' ');
+                sb.append(place);
+                if (!modern.isBlank()) sb.append("（今").append(modern).append('）');
+                if (!event.isBlank()) sb.append("：").append(event);
+                sb.append('\n');
+                if (sb.length() > 1200) { sb.append("· ……（后略）\n"); break; }
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static boolean blank(String s) {
+        return s == null || s.isBlank();
     }
 
     private static final String NOTE_SYSTEM = """

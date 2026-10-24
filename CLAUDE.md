@@ -82,7 +82,7 @@ docs/.deepseek_key DeepSeek API Key（已 gitignore）
 - AI 谱曲：DeepSeek 读诗 → MusicGen 生成 30s 器乐曲（Mac MPS）
 - 朗诵：edge-tts 生成配乐朗诵
 - 问诗：DeepSeek 多轮问答（带全诗上下文）
-- 诗人对话：AI 角色扮演诗人本人（第一人称）
+- 诗人对话：AI 角色扮演诗人本人（第一人称，system prompt 注入库中生平资料——简介/故事/行旅足迹，语料层短小传同样受益）
 - 语料层注译赏：按需生成并缓存
 
 ### 互动与游戏
