@@ -38,3 +38,6 @@ docs/.deepseek_key
 # 部署密钥与证书
 deploy/.env
 deploy/certs/
+
+# 本地工具状态
+.workbuddy/
