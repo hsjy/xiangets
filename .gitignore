@@ -41,3 +41,7 @@ deploy/certs/
 
 # 本地工具状态
 .workbuddy/
+
+# Android 签名（已上传 GitHub Secrets，本份是唯一本地备份，勿提交勿删）
+xiangets-release.keystore
+docs/keystore_pass

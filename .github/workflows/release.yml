@@ -32,6 +32,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
   # ---- 浏览器插件打包 + Release ----
+  # 先行创建 GitHub Release，后续 desktop / android job 把各自资产挂上来
   extension:
     runs-on: ubuntu-latest
     steps:
@@ -39,45 +40,88 @@ jobs:
       - run: cd extension && zip -r ../xiangets-extension-${{ github.ref_name }}.zip .
       - uses: softprops/action-gh-release@v2
         with:
-          files: xiangets-extension-v${{ github.ref_name }}.zip
+          files: xiangets-extension-${{ github.ref_name }}.zip
           draft: false
           prerelease: false
           generate_release_notes: true
 
-  # ---- Android APK（需要 Capacitor 初始化后启用）----
-  # android:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-java@v4
-  #       with: { java-version: '17', distribution: 'temurin' }
-  #     - uses: actions/setup-node@v4
-  #       with: { node-version: '20' }
-  #     - run: cd frontend && npm ci && npm run build -- --mode real
-  #     - run: npx cap add android && npx cap sync android
-  #     - run: cd android && chmod +x gradlew && ./gradlew assembleRelease
-  #     - uses: softprops/action-gh-release@v2
-  #       with:
-  #         files: android/app/build/outputs/apk/release/app-release.apk
+  # ---- 桌面端（Tauri）：macOS dmg 双架构 / Windows msi+exe / Linux AppImage+deb ----
+  desktop:
+    needs: extension
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest    # Apple Silicon
+          - platform: macos-13        # Intel
+          - platform: ubuntu-22.04
+          - platform: windows-latest
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: 安装 Linux WebView 依赖（Tauri 需要）
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - run: cd frontend && npm ci
+      - run: cd frontend && npm run build
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: frontend
+          tagName: ${{ github.ref_name }}
+          releaseName: '弦歌 ${{ github.ref_name }}'
+          releaseBody: '桌面端与 Android 均为 Mock 演示模式（内置语料、本地数据）；连自建后端见 README。'
+          releaseDraft: false
+          prerelease: false
 
-  # ---- 桌面客户端（需要 Tauri 初始化后启用）----
-  # desktop:
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - platform: macos-latest    # → .dmg (aarch64 + x86_64)
-  #         - platform: ubuntu-latest   # → .AppImage / .deb
-  #         - platform: windows-latest  # → .msi / .exe
-  #   runs-on: ${{ matrix.platform }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@stable
-  #     - uses: tauri-apps/tauri-action@v0
-  #       env:
-  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #       with:
-  #         projectPath: frontend
-  #         tagName: ${{ github.ref_name }}
-  #         releaseName: '弦歌 v__VERSION__'
-  #         releaseDraft: false
-  #         prerelease: false
+  # ---- Android APK（Capacitor）----
+  android:
+    needs: extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '21' }
+      - name: 准备签名 keystore（Secrets 提供则解码，否则临时生成兜底）
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > /tmp/xiangets.keystore
+            echo "使用正式签名 keystore"
+          else
+            keytool -genkeypair -v -keystore /tmp/xiangets.keystore \
+              -alias xiangets -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$ANDROID_KEYSTORE_PASSWORD" -keypass "$ANDROID_KEYSTORE_PASSWORD" \
+              -dname "CN=XianGets, OU=Dev, O=XianGets, C=CN"
+            echo "⚠️ 未配置 Secrets，使用临时 keystore（升级安装需先卸载旧版）"
+          fi
+      - run: cd frontend && npm ci && npm run build && npx cap sync android
+      - name: 构建 Release APK
+        working-directory: frontend/android
+        env:
+          ANDROID_KEYSTORE: /tmp/xiangets.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: xiangets
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: 重命名并上传 APK
+        run: |
+          mv frontend/android/app/build/outputs/apk/release/app-release.apk \
+             xiangets-android-${{ github.ref_name }}.apk
+        # softprops 上传（Release 已由 extension job 创建）
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: xiangets-android-${{ github.ref_name }}.apk
+          draft: false
+          prerelease: false
