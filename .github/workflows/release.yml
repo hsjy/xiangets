@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cd extension && zip -r ../xiangets-extension-v${{ github.ref_name }}.zip .
+      - run: cd extension && zip -r ../xiangets-extension-${{ github.ref_name }}.zip .
       - uses: softprops/action-gh-release@v2
         with:
           files: xiangets-extension-v${{ github.ref_name }}.zip
