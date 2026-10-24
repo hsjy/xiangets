@@ -9,10 +9,15 @@
 ## 快速启动
 
 ```bash
-# 后端（必须带 DeepSeek key，否则问诗/谱曲降级）
+# 一键起全栈（MySQL+后端+边车+前端，已在跑的自动跳过）
+bash tools/dev_up.sh
+# 日志：/tmp/xiangge-*.log；进程用 start_new_session 分离，会话结束不退出
+
+# 手动逐个启动：
+# 后端（必须带 DeepSeek key，否则问诗/谱曲降级；key 在仓库根 docs/.deepseek_key）
 cd backend
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
-AI_DEEPSEEK_KEY=$(cat docs/.deepseek_key) \
+AI_DEEPSEEK_KEY=$(cat ../docs/.deepseek_key) \
 AI_ACESTEP_URL=http://127.0.0.1:8000/generate \
 MYSQL_PORT=3307 \
 mvn -o spring-boot:run
@@ -23,6 +28,8 @@ cd frontend && npm run dev -- --mode real
 # MusicGen 边车（AI 谱曲用，可选）
 HF_ENDPOINT=https://hf-mirror.com python3 tools/ai_server.py
 ```
+
+**访问**：http://localhost:5173 —— 必须用 `localhost`，Vite 只绑 IPv6（`::1`），用 `127.0.0.1` 会连接被拒。
 
 | 服务 | 端口 | 说明 |
 | --- | --- | --- |
