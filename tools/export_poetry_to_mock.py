@@ -46,9 +46,9 @@ def cast(v):
 poets = []
 for row in q("SELECT id,name,IFNULL(zi,''),IFNULL(hao,''),dynasty,IFNULL(years,''),"
              "IFNULL(title,''),IFNULL(intro,''),IFNULL(story,''),IFNULL(story_title,''),"
-             "IFNULL(journey,'') FROM poet WHERE tier=1 ORDER BY id"):
+             "IFNULL(journey,''),tier FROM poet WHERE tier=1 ORDER BY id"):
     poets.append(dict(zip(['id', 'name', 'zi', 'hao', 'dynasty', 'years', 'title',
-                           'intro', 'story', 'storyTitle', 'journey'], [cast(x) for x in row])))
+                           'intro', 'story', 'storyTitle', 'journey', 'tier'], [cast(x) for x in row])))
 
 poems = []
 for row in q("SELECT m.id,m.title,IFNULL(m.subtitle,''),m.poet_id,m.dynasty,IFNULL(m.genre,''),"
@@ -57,7 +57,7 @@ for row in q("SELECT m.id,m.title,IFNULL(m.subtitle,''),m.poet_id,m.dynasty,IFNU
              "JOIN poet p ON p.id=m.poet_id WHERE m.tier=1 ORDER BY m.id"):
     poems.append(dict(zip(['id', 'title', 'subtitle', 'poetId', 'dynasty', 'genre', 'paragraphs',
                            'annotation', 'translation', 'appreciation', 'mood', 'famousLine',
-                           'poetName', 'famousNote'], [cast(x) for x in row])))
+                           'famousNote', 'poetName'], [cast(x) for x in row])))
 
 tracks = []
 for row in q("SELECT s.id,s.name,s.poem_id,s.track_kind,s.url,ROUND(s.duration,1),s.style "

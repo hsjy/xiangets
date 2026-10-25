@@ -5,6 +5,7 @@ import Icon from './Icon.vue'
 import UserAvatar from './UserAvatar.vue'
 import { useUserStore } from '../stores/user'
 import { toast } from '../utils/toast'
+import { getDeepSeekKey, setDeepSeekKey } from '../api/aiDirect'
 
 const route = useRoute()
 const router = useRouter()
@@ -65,6 +66,26 @@ async function onLogout() {
 
 function onClickOutside(e) {
   if (menuRef.value && !menuRef.value.contains(e.target)) menuOpen.value = false
+  if (aiRef.value && !aiRef.value.contains(e.target)) aiOpen.value = false
+}
+
+/* AI 伴读（mock 模式独有）：自填 DeepSeek Key，浏览器直连，Key 只存本机 */
+const isMock = import.meta.env.MODE !== 'real'
+const aiOpen = ref(false)
+const aiKey = ref(getDeepSeekKey())
+const aiKeyInput = ref('')
+const aiRef = ref(null)
+function saveAiKey() {
+  setDeepSeekKey(aiKeyInput.value)
+  aiKey.value = getDeepSeekKey()
+  aiKeyInput.value = ''
+  if (aiKey.value) { aiOpen.value = false; toast.success('AI 伴读已开启，去意境页问一首诗试试') }
+  else toast('Key 为空，未保存')
+}
+function clearAiKey() {
+  setDeepSeekKey('')
+  aiKey.value = ''
+  toast.success('已清除 DeepSeek Key')
 }
 onMounted(() => {
   document.addEventListener('click', onClickOutside)
@@ -105,6 +126,26 @@ onBeforeUnmount(() => {
       <button class="theme-btn" :title="night ? '切换到日间' : '切换到夜读'" @click="toggleNight" data-test="night-toggle">
         {{ night ? '☀' : '☾' }}
       </button>
+      <div v-if="isMock" class="ai-anchor" ref="aiRef">
+        <button
+          class="theme-btn ai-btn" :class="{ 'ai-on': !!aiKey }"
+          :title="aiKey ? 'AI 伴读已开启（DeepSeek）' : '填入 DeepSeek Key 开启 AI 伴读'"
+          @click.stop="aiOpen = !aiOpen" data-test="ai-key-btn"
+        >✦</button>
+        <div v-if="aiOpen" class="ai-pop" @click.stop>
+          <div class="ai-pop-title">AI 伴读 · DeepSeek</div>
+          <p class="ai-pop-hint">填入你自己的 API Key 后，问诗 / 诗人对话 / 注译赏由本机直连 DeepSeek，无需任何服务器。Key 只保存在浏览器 localStorage。</p>
+          <input
+            v-model="aiKeyInput" class="ai-input" type="password"
+            placeholder="sk-……" @keyup.enter="saveAiKey" data-test="ai-key-input"
+          />
+          <div class="ai-pop-row">
+            <button class="btn btn-primary btn-sm" @click="saveAiKey" data-test="ai-key-save">保存</button>
+            <button v-if="aiKey" class="btn btn-sm" @click="clearAiKey">清除</button>
+            <span v-if="aiKey" class="ai-state">已开启</span>
+          </div>
+        </div>
+      </div>
       <template v-if="userStore.isLoggedIn">
         <button class="user-chip" @click.stop="menuOpen = !menuOpen" data-test="user-menu">
           <UserAvatar :name="userStore.user.name" :size="28" circle />
@@ -266,4 +307,28 @@ onBeforeUnmount(() => {
   transition: all 0.2s;
 }
 .theme-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* AI 伴读（mock 模式）：✦ 按钮 + Key 设置弹层 */
+.ai-anchor { position: relative; display: inline-flex; }
+.ai-btn.ai-on { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #a5402d) 18%, transparent); }
+.ai-pop {
+  position: absolute; top: 42px; right: 0; z-index: 60;
+  width: 292px; padding: 14px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: rgba(250, 246, 234, 0.97);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 44px rgba(88, 70, 40, 0.18);
+}
+.ai-pop-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.ai-pop-hint { font-size: 12px; line-height: 1.6; color: var(--text-2); margin: 0 0 10px; }
+.ai-input {
+  width: 100%; height: 34px; padding: 0 10px;
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  background: transparent; color: var(--text); font-size: 13px;
+  box-sizing: border-box;
+}
+.ai-input:focus { outline: none; border-color: var(--accent); }
+.ai-pop-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.ai-state { font-size: 12px; color: var(--accent); }
+html[data-theme='dark'] .ai-pop { background: rgba(34, 32, 28, 0.97); }
 </style>

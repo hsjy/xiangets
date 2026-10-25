@@ -14,6 +14,8 @@
 
 演示站为浏览器内 Mock 模式：内置精选语料，可注册演示账号（数据保存在你自己的浏览器 localStorage 中），**AI 对话/谱曲/全量语料/多用户互动等完整功能需要本地或服务器部署**——见下文。
 
+**AI 伴读**：点顶部 ✦ 填入你自己的 [DeepSeek API Key](https://platform.deepseek.com/)（只存本机 localStorage，不经过任何服务器），网页版/App 即可使用问诗、诗人对话、按需注译赏——由浏览器直连 DeepSeek，无需部署后端。App（桌面/移动）同样在顶部 ✦ 设置。
+
 ## 下载桌面端 / 移动端 App
 
 推 `v*` 标签自动构建，全部形态见 [Releases](https://github.com/hsjy/xiangets/releases)：
@@ -25,7 +27,7 @@
 | `xiangets_*_amd64.AppImage` / `.deb` / `.rpm` | Linux | 免安装直跑 / Debian 系 / RedHat 系 |
 | `xiangets-android_v*.apk` | Android 6+ | 允许未知来源安装 |
 
-桌面端为 **Tauri** 壳、移动端为 **Capacitor** 壳，打包的都是 Mock 模式前端——开箱即用（诗词/选集/游戏/感悟全可玩，数据存本地），但**不含音频与 AI 功能**。想连自建后端：在 App 内执行 `localStorage.setItem('yuetin_server', 'https://你的服务器')` 后重启（见 `src/api/client.js`）。
+桌面端为 **Tauri** 壳、移动端为 **Capacitor** 壳，打包的都是 Mock 模式前端——开箱即用（诗词/选集/游戏/感悟全可玩，数据存本地），但**不含音频与预生成 AI 曲**。AI 伴读：App 内顶部 ✦ 填入自己的 DeepSeek Key 即可开启问诗/诗人对话/注译赏（本机直连）。想连自建后端：在 App 内执行 `localStorage.setItem('yuetin_server', 'https://你的服务器')` 后重启（见 `src/api/client.js`）。
 
 ## 功能一览
 

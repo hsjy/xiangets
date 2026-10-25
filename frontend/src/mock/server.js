@@ -8,6 +8,7 @@
 import { loadDB, tx } from './db'
 import { POETS, POEMS, POEM_TRACKS } from './poetry_data'
 import { signToken, verifyToken } from './jwt'
+import * as aiDirect from '../api/aiDirect'
 
 /* ---------------- 响应助手 ---------------- */
 const ok = (data = null) => ({ status: 200, data: { code: 200, message: 'success', data } })
@@ -136,9 +137,45 @@ const MOCK_RELATIONS = [
 
 const colView = (c) => ({ id: c.id, title: c.title, subtitle: c.subtitle, intro: c.intro, mood: c.mood, sort: c.sort, poemCount: c.poemIds.length })
 
+/**
+ * AI 直连路由：mock 模式没有后端，用户在顶部 ✦ 设置里填了自己的 DeepSeek Key
+ * 后，问诗/诗人对话/按需注译赏由浏览器直连 api.deepseek.com 完成；
+ * 未填 Key 时返回 400 与引导文案（而非「接口不存在」）。
+ */
+async function aiRoute(ctx, method, seg) {
+  const id = Number(seg[2])
+  if (method !== 'POST' || !id) return fail(404, `接口不存在: ${method} ${seg.join('/')}`)
+  try {
+    if (seg[0] === 'poem' && seg[1] === 'ask') {
+      const poem = POEMS.find((m) => m.id === id)
+      if (!poem) return fail(404, '诗不存在')
+      const poet = POETS.find((p) => p.id === poem.poetId)
+      const view = { ...poem, poetName: poet ? poet.name : '' }
+      return ok({ answer: await aiDirect.askPoem(view, String(ctx.body?.question || ''), ctx.body?.history) })
+    }
+    if (seg[0] === 'poet' && seg[1] === 'chat') {
+      const poet = POETS.find((p) => p.id === id)
+      if (!poet) return fail(404, '诗人不存在')
+      return ok({ answer: await aiDirect.poetChat(poet, String(ctx.body?.question || ''), ctx.body?.history) })
+    }
+    if (seg[0] === 'poem' && seg[1] === 'annotate') {
+      const poem = POEMS.find((m) => m.id === id)
+      if (!poem) return fail(404, '诗不存在')
+      return ok(await aiDirect.generateNotes(poem))
+    }
+    return fail(404, `接口不存在: ${method} ${seg.join('/')}`)
+  } catch (err) {
+    const status = err.status >= 400 && err.status < 600 ? err.status : 500
+    return fail(status, err.message || 'AI 调用失败')
+  }
+}
+
 export async function handle(ctx) {
   const { method, path } = ctx
   const seg = path.split('/').filter(Boolean) // e.g. ['playlist','song','add']
+
+  if (seg[0] === 'poem' && (seg[1] === 'ask' || seg[1] === 'annotate')) return aiRoute(ctx, method, seg)
+  if (seg[0] === 'poet' && seg[1] === 'chat') return aiRoute(ctx, method, seg)
 
   try {
     /* ===== 认证模块 ===== */
