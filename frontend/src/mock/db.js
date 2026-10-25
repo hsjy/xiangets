@@ -5,7 +5,7 @@
  * 说明：静态托管（GitHub Pages）环境下用它代替 MySQL；
  * 联调真实后端时 api/client.js 会切换到真实 HTTP 请求，本模块不参与。
  */
-import { buildSeed } from './seed'
+import { buildSeed, SEED_USERS } from './seed'
 
 const DB_KEY = 'yuetin_db_v1'
 
@@ -17,6 +17,18 @@ export function loadDB() {
     const raw = localStorage.getItem(DB_KEY)
     if (raw) {
       cache = JSON.parse(raw)
+      // 种子账号对齐：老浏览器库可能存着旧版种子密码，按用户名同步（保留用户产生的其余数据）
+      let dirty = false
+      for (const su of SEED_USERS) {
+        const row = (cache.user || []).find((u) => u.username === su.username)
+        if (row) {
+          if (row.password !== su.password) { row.password = su.password; dirty = true }
+        } else {
+          cache.user.push({ ...su })
+          dirty = true
+        }
+      }
+      if (dirty) saveDB()
       return cache
     }
   } catch (e) {

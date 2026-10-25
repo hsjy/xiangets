@@ -5,6 +5,17 @@
  */
 const AUDIO = (n) => `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${n}.mp3`
 
+const base = new Date('2024-01-10T10:00:00+08:00').getTime()
+
+/**
+ * 种子账号。demo 是公开演示账号；admin 仅保留数据行以兼容历史关联，
+ * mock 登录已封禁（见 server.js login），真实后端的管理员与本文件无关。
+ */
+export const SEED_USERS = [
+  { id: 1, username: 'demo', password: 'demo123456', name: '演示用户', avatar: '', sex: 0, phone: '13800000000', email: 'demo@yuetin.example', birth: '2000-01-01', intro: '这个人很懒，但很爱听歌。', role: 'user', createTime: base },
+  { id: 2, username: 'admin', password: 'admin123', name: '管理员', avatar: '', sex: 1, phone: '', email: 'admin@yuetin.example', birth: '', intro: '站点管理员。', role: 'admin', createTime: base }
+]
+
 // 真实探测时长（秒）
 const DUR = {
   1: 372.7, 2: 425.9, 3: 344.0, 4: 302.5, 5: 353.9, 6: 279.6,
@@ -42,8 +53,6 @@ const PLAY_COUNT = {
 }
 
 export function buildSeed() {
-  const base = new Date('2024-01-10T10:00:00+08:00').getTime()
-
   const songs = Object.entries(SONGS_OF).flatMap(([sid, nums]) =>
     nums.map((n, idx) => ({
       id: n,
@@ -84,10 +93,7 @@ export function buildSeed() {
   return {
     version: 1,
     seq: { user: 3, singer: 8, song: 16, playlist: 6, comment: 2 },
-    user: [
-      { id: 1, username: 'demo', password: 'demo123456', name: '演示用户', avatar: '', sex: 0, phone: '13800000000', email: 'demo@yuetin.example', birth: '2000-01-01', intro: '这个人很懒，但很爱听歌。', role: 'user', createTime: base },
-      { id: 2, username: 'admin', password: 'admin123', name: '管理员', avatar: '', sex: 1, phone: '', email: 'admin@yuetin.example', birth: '', intro: '站点管理员。', role: 'admin', createTime: base }
-    ],
+    user: SEED_USERS,
     singer: SINGERS,
     song: songs,
     playlist,

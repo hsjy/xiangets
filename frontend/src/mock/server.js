@@ -1135,6 +1135,7 @@ async function login(body) {
   const db = loadDB()
   const user = db.user.find((u) => u.username === String(username).trim())
   if (!user || user.password !== String(password)) return fail(400, '用户名或密码错误')
+  if (user.role === 'admin') return fail(403, '演示环境不开放管理员账号')
   const token = await signToken({ uid: user.id, role: user.role })
   return ok({ token, user: publicUser(user) })
 }

@@ -63,7 +63,7 @@ mvn spring-boot:run
 cd frontend && npm install && npm run dev -- --mode real
 ```
 
-内置账号：`demo / demo123456`（普通用户）、`admin / admin123`（管理员，可进管理后台）。数据库由 Flyway 自动建表并灌入精选层种子数据；34 万首语料层可用 `tools/import_corpus.py` 导入（见脚本头注释）。后端接口文档：http://localhost:8080/api/swagger-ui.html
+内置演示账号：`demo / demo123456`（普通用户；管理员账号不开放演示，仅本机使用）。数据库由 Flyway 自动建表并灌入精选层种子数据；34 万首语料层可用 `tools/import_corpus.py` 导入（见脚本头注释）。后端接口文档：http://localhost:8080/api/swagger-ui.html
 
 ## 部署上线
 
